@@ -955,32 +955,16 @@ function buildOrderFlex(values, result) {
   const orderNo = result?.order_no || "";
   const payText = `แจ้งชำระเงิน ออเดอร์ ${orderNo} ยอด ${money(total)}`;
 
-  const itemRows = values.items.map((item) => ({
-    type: "box",
-    layout: "horizontal",
-    contents: [
-      { type: "text", text: `${item.name} x${item.qty}`, size: "sm", color: "#444444", wrap: true, flex: 5 },
-      { type: "text", text: money(item.price * item.qty), size: "sm", color: "#111111", align: "end", flex: 3 }
-    ]
-  }));
-
   const bodyContents = [
     { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", weight: "bold", size: "lg", wrap: true },
     { type: "text", text: `เลขออเดอร์ ${orderNo || "-"}`, size: "sm", color: "#888888" },
     { type: "separator", margin: "md" }
   ];
-  itemRows.forEach((row) => bodyContents.push(row));
-  bodyContents.push({ type: "separator", margin: "md" });
-  bodyContents.push({
-    type: "box",
-    layout: "horizontal",
-    contents: [
-      { type: "text", text: "ยอดรวม", weight: "bold" },
-      { type: "text", text: money(total), weight: "bold", align: "end", color: primary }
-    ]
+  values.items.forEach((item) => {
+    bodyContents.push({ type: "text", text: `${item.name} x${item.qty}  ${money(item.price * item.qty)}`, size: "sm", wrap: true });
   });
-  if (values.customer) bodyContents.push({ type: "text", text: `ผู้สั่ง: ${values.customer}`, size: "xs", color: "#888888", wrap: true });
-  if (values.shipping) bodyContents.push({ type: "text", text: `จัดส่ง: ${values.shipping}`, size: "xs", color: "#888888", wrap: true });
+  bodyContents.push({ type: "separator", margin: "md" });
+  bodyContents.push({ type: "text", text: `ยอดรวม ${money(total)}`, weight: "bold", size: "md" });
 
   return {
     type: "flex",
