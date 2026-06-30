@@ -38,6 +38,7 @@
       adminShopName: document.querySelector("#adminShopName"),
       adminUserLabel: document.querySelector("#adminUserLabel"),
       settingsView: document.querySelector("#settingsView"),
+      paymentView: document.querySelector("#paymentView"),
       productsView: document.querySelector("#productsView"),
       ordersView: document.querySelector("#ordersView"),
       membersView: document.querySelector("#membersView"),
@@ -139,7 +140,7 @@
   function switchTab(tab) {
     state.tab = tab;
     document.querySelectorAll("[data-admin-tab]").forEach((button) => button.classList.toggle("is-active", button.dataset.adminTab === tab));
-    [els.settingsView, els.productsView, els.ordersView, els.membersView].forEach((view) => view.classList.add("is-hidden"));
+    [els.settingsView, els.paymentView, els.productsView, els.ordersView, els.membersView].forEach((view) => view.classList.add("is-hidden"));
     document.querySelector(`#${tab}View`).classList.remove("is-hidden");
     loadActiveTab();
   }
@@ -148,6 +149,7 @@
     if (!state.shop?.id) return;
     try {
       if (state.tab === "settings") renderSettings();
+      if (state.tab === "payment") renderPayment();
       if (state.tab === "products") await loadProductsView();
       if (state.tab === "orders") await loadOrdersView();
       if (state.tab === "members") await loadMembersView();
@@ -198,6 +200,84 @@
     els.adminShopName.textContent = state.shop.shop_name;
     toast("บันทึกตั้งค่าร้านแล้ว");
     renderSettings();
+  }
+
+  function renderPayment() {
+    const shop = state.shop;
+    els.paymentView.innerHTML = `
+      <form class="admin-form" id="paymentForm">
+        <div class="admin-panel-head">
+          <div>
+            <h2>ตั้งค่าการชำระเงิน</h2>
+            <p>ข้อมูลนี้ใช้แสดง/ส่งให้ลูกค้าเมื่อสถานะออเดอร์เป็น "รอชำระเงิน"</p>
+          </div>
+        </div>
+        <div class="admin-grid">
+          <label class="field">
+            <span>ธนาคาร</span>
+            <input name="payment_bank" value="${escapeAttr(shop.payment_bank || "")}" placeholder="เช่น กสิกรไทย">
+          </label>
+          <label class="field">
+            <span>เลขที่บัญชี</span>
+            <input name="payment_account_no" value="${escapeAttr(shop.payment_account_no || "")}" inputmode="numeric" placeholder="xxx-x-xxxxx-x">
+          </label>
+          <label class="field span-2">
+            <span>ชื่อบัญชี</span>
+            <input name="payment_account_name" value="${escapeAttr(shop.payment_account_name || "")}" placeholder="ชื่อ-นามสกุล เจ้าของบัญชี">
+          </label>
+          <label class="field span-2">
+            <span>หมายเหตุ (ถ้ามี)</span>
+            <textarea name="payment_note" placeholder="เช่น โอนแล้วแจ้งสลิปในแชท">${escapeHtml(shop.payment_note || "")}</textarea>
+          </label>
+          ${renderImageField("payment", "รูป QR / พร้อมเพย์", shop.payment_image_url, shop.payment_image_public_id)}
+        </div>
+        <button class="primary-btn" type="submit">บันทึกการชำระเงิน</button>
+      </form>
+    `;
+    document.querySelector("#paymentForm").addEventListener("submit", savePayment);
+    bindImageInputs();
+  }
+
+  async function savePayment(event) {
+    event.preventDefault();
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
+    const submitBtn = formEl.querySelector("button[type='submit']");
+    const originalLabel = submitBtn?.textContent;
+    try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "กำลังบันทึก...";
+      }
+      let image = {
+        url: formEl.querySelector('input[name="payment_url"]')?.value || "",
+        publicId: formEl.querySelector('input[name="payment_public_id"]')?.value || ""
+      };
+      const file = formEl.querySelector('input[name="payment_file"]')?.files?.[0];
+      if (file) {
+        const uploaded = await window.ShopServices.uploadService.uploadPaymentImage(file, state.shop.id);
+        image = { url: uploaded.url, publicId: uploaded.publicId };
+      }
+      const payload = {
+        payment_bank: (form.get("payment_bank") || "").trim(),
+        payment_account_no: (form.get("payment_account_no") || "").trim(),
+        payment_account_name: (form.get("payment_account_name") || "").trim(),
+        payment_note: (form.get("payment_note") || "").trim(),
+        payment_image_url: image.url,
+        payment_image_public_id: image.publicId
+      };
+      const updated = await window.ShopServices.shopService.updateShopSettings(state.shop.id, payload);
+      state.shop = { ...state.shop, ...updated };
+      toast("บันทึกข้อมูลชำระเงินแล้ว");
+      renderPayment();
+    } catch (error) {
+      console.error(error);
+      toast(error.message || "บันทึกไม่สำเร็จ");
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+    }
   }
 
   async function loadProductsView() {

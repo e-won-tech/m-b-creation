@@ -90,6 +90,10 @@
     return uploadToCloudinary(file, `shops/${shopId}/logo`);
   }
 
+  async function uploadPaymentImage(file, shopId) {
+    return uploadToCloudinary(file, `shops/${shopId}/payment`);
+  }
+
   async function deleteCloudinaryImage(publicId) {
     console.warn("Cloudinary delete must run on a trusted server. Public id:", publicId);
     throw new Error("ลบรูป Cloudinary ต้องทำผ่าน server เท่านั้น");
@@ -98,6 +102,7 @@
   window.ShopServices.uploadService = {
     uploadProductImage,
     uploadShopLogo,
+    uploadPaymentImage,
     deleteCloudinaryImage
   };
 })();
