@@ -910,7 +910,8 @@ async function sendOrderMessage(message) {
       setTimeout(() => window.liff?.closeWindow?.(), 900);
       return;
     } catch (error) {
-      toast("ส่งเข้า LINE ไม่สำเร็จ กรุณาคัดลอกข้อความแทน");
+      console.error("LIFF sendMessages error:", error);
+      showBanner(`ส่งเข้า LINE ไม่สำเร็จ: ${error?.code || ""} ${error?.message || error}`.trim());
     }
   }
 
