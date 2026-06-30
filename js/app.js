@@ -955,7 +955,7 @@ function buildOrderFlex(values, result) {
   const orderNo = result?.order_no || "";
   const payText = `แจ้งชำระเงิน ออเดอร์ ${orderNo} ยอด ${money(total)}`;
 
-  // BARE minimal flex — ชี้ขาดว่า liff.sendMessages ส่ง flex ได้ไหม
+  // ทดสอบ: body เปลือย + ปุ่ม minimal (ไม่มี style/color)
   return {
     type: "flex",
     altText: `คำสั่งซื้อ ${orderNo || "-"}`,
@@ -967,6 +967,13 @@ function buildOrderFlex(values, result) {
         contents: [
           { type: "text", text: `คำสั่งซื้อ ${orderNo || "-"}`, weight: "bold", wrap: true },
           { type: "text", text: `ยอดรวม ${money(total)}`, wrap: true }
+        ]
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          { type: "button", action: { type: "message", label: "แจ้งชำระเงิน", text: payText } }
         ]
       }
     }
