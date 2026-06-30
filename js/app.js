@@ -1016,7 +1016,9 @@ async function sendOrderMessage(message, flexMessage = null) {
     attempts.push({ type: "text", text: message });
 
     let lastError = null;
-    for (const msg of attempts) {
+    let flexError = null;
+    for (let i = 0; i < attempts.length; i += 1) {
+      const msg = attempts[i];
       try {
         await liff.sendMessages([msg]);
         Object.keys(cart).forEach((key) => delete cart[key]);
@@ -1024,12 +1026,14 @@ async function sendOrderMessage(message, flexMessage = null) {
         openSheet(`
           <h2 class="sheet-title" id="sheetTitle">ส่งออเดอร์แล้ว</h2>
           <div class="empty-state">ระบบส่งคำสั่งซื้อเข้าแชท LINE เรียบร้อย</div>
+          ${flexError ? `<div class="status-banner">FLEX FAIL: ${escapeHtml(`${flexError?.code || ""} ${flexError?.message || flexError}`)}</div>` : ""}
         `);
-        setTimeout(() => window.liff?.closeWindow?.(), 900);
+        setTimeout(() => { if (!flexError) window.liff?.closeWindow?.(); }, 1200);
         return;
       } catch (error) {
         console.error("LIFF sendMessages error:", error);
         lastError = error;
+        if (msg === flexMessage) flexError = error;
       }
     }
     showBanner(`ส่งเข้า LINE ไม่สำเร็จ: ${lastError?.code || ""} ${lastError?.message || lastError}`.trim());
