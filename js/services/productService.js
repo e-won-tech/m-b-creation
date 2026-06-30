@@ -73,6 +73,13 @@
     return updateProduct(productId, { active: false });
   }
 
+  async function deleteProduct(productId) {
+    const supabase = core().requireSupabaseClient();
+    const { error } = await supabase.from("products").delete().eq("id", productId);
+    if (error) throw core().publicError("ลบสินค้าไม่สำเร็จ", error);
+    return true;
+  }
+
   async function toggleProductActive(productId, active) {
     return updateProduct(productId, { active });
   }
@@ -180,6 +187,7 @@
     createProduct,
     updateProduct,
     softDeleteProduct,
+    deleteProduct,
     toggleProductActive,
     toggleProductFeatured,
     updateProductStock,

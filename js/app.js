@@ -323,7 +323,6 @@ function renderProductCard(product) {
       <div class="card-body">
         <div class="pack">${escapeHtml(product.cat || "")}</div>
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <div class="product-desc">${escapeHtml(firstLine(product.desc))}</div>
         <div class="card-foot">
           <div class="price">${money(product.price)}</div>
           <button class="add-btn" type="button" data-quick-add="${escapeAttr(product.id)}" ${out ? "disabled" : ""} aria-label="เพิ่ม ${escapeAttr(product.name)}">${addIconSvg()}</button>

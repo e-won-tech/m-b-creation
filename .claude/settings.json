@@ -20,7 +20,8 @@
       "Bash(curl -s https://ugpwksluhrflbmwoxqmt.supabase.co/rest/v1/rpc/create_order_from_cart -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4' -H 'Content-Type: application/json' --data-binary @C:/Users/Advice/AppData/Local/Temp/claude/c--Users-Advice-Downloads-New-folder--17-/52defcae-36f2-4ed3-aa88-2e518a7c4279/scratchpad/min.json -o C:/Users/Advice/AppData/Local/Temp/claude/c--Users-Advice-Downloads-New-folder--17-/52defcae-36f2-4ed3-aa88-2e518a7c4279/scratchpad/res3.json)",
       "Bash(node -e 'const r=require\\('\\\\''C:/Users/Advice/AppData/Local/Temp/claude/c--Users-Advice-Downloads-New-folder--17-/52defcae-36f2-4ed3-aa88-2e518a7c4279/scratchpad/res3.json'\\\\''\\); console.log\\('\\\\''=== FULL CONTEXT ==='\\\\''\\); console.log\\(r.context\\); console.log\\('\\\\''=== DETAIL ==='\\\\''\\); console.log\\(r.detail\\)')",
       "Bash(node --check js/services/memberService.js)",
-      "Bash(git commit -m 'Fix order RPC JSON error and wire membership to Supabase *)"
+      "Bash(git commit -m 'Fix order RPC JSON error and wire membership to Supabase *)",
+      "Bash(git commit -m 'Remove product card description; add permanent delete in admin products *)"
     ]
   }
 }

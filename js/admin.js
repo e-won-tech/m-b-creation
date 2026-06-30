@@ -268,6 +268,7 @@
       renderProducts();
     }));
     document.querySelectorAll("[data-hide-product]").forEach((button) => button.addEventListener("click", () => hideProduct(button.dataset.hideProduct)));
+    document.querySelectorAll("[data-delete-product]").forEach((button) => button.addEventListener("click", () => removeProduct(button.dataset.deleteProduct)));
   }
 
   function renderProductTable() {
@@ -296,7 +297,8 @@
                 <td>
                   <div class="row-actions">
                     <button class="mini-btn" type="button" data-edit-product="${escapeAttr(product.id)}">แก้ไข</button>
-                    <button class="mini-btn danger" type="button" data-hide-product="${escapeAttr(product.id)}">ซ่อน</button>
+                    <button class="mini-btn" type="button" data-hide-product="${escapeAttr(product.id)}">ซ่อน</button>
+                    <button class="mini-btn danger" type="button" data-delete-product="${escapeAttr(product.id)}">ลบ</button>
                   </div>
                 </td>
               </tr>
@@ -444,6 +446,21 @@
     await window.ShopServices.productService.softDeleteProduct(productId);
     toast("ซ่อนสินค้าแล้ว");
     await loadProductsView();
+  }
+
+  async function removeProduct(productId) {
+    const product = state.products.find((item) => item.id === productId);
+    const name = product?.name || "สินค้านี้";
+    if (!window.confirm(`ลบ "${name}" ถาวร? ลบแล้วกู้คืนไม่ได้ (ถ้าแค่ไม่ต้องการขายชั่วคราว ให้ใช้ "ซ่อน")`)) return;
+    try {
+      await window.ShopServices.productService.deleteProduct(productId);
+      if (state.editingProductId === productId) state.editingProductId = "";
+      toast("ลบสินค้าแล้ว");
+      await loadProductsView();
+    } catch (error) {
+      console.error(error);
+      toast(error.message || "ลบสินค้าไม่สำเร็จ");
+    }
   }
 
   async function loadOrdersView() {
