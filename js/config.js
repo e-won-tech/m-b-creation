@@ -3,7 +3,7 @@ const SHOP_CONFIG = {
   supabaseUrl: "https://ugpwksluhrflbmwoxqmt.supabase.co",
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4",
   shopSlug: "demo-shop",
-  liffId: "",
+  liffId: "2010557164-GdxhSolO",
   shopName: "M&B CREATION",
   shopTagline: "สินค้าคุณภาพ พร้อมบริการผ่าน LINE",
   logoUrl: "assets/logo.png",
