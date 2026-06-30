@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3B9344">
+    <title>Admin - LIFF Shop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+  </head>
+  <body class="admin-page">
+    <header class="admin-header">
+      <div class="admin-head-inner">
+        <div>
+          <h1>Shop Admin</h1>
+          <p id="adminSub">จัดการร้านค้า สินค้า ออเดอร์ และสมาชิก</p>
+        </div>
+        <div class="admin-head-actions">
+          <a class="admin-link" href="index.html">หน้าร้าน</a>
+          <button class="ghost-btn compact-btn is-hidden" id="logoutBtn" type="button">ออกจากระบบ</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="admin-shell">
+      <section class="admin-panel" id="setupPanel">
+        <h2>ตั้งค่าก่อนใช้งาน</h2>
+        <p>เปิด `js/config.js` แล้วตั้งค่า `useSupabase`, `supabaseUrl`, `supabaseAnonKey` และ `shopSlug` ก่อนใช้งานหลังบ้าน</p>
+      </section>
+
+      <section class="admin-panel" id="loginPanel">
+        <div class="admin-panel-head">
+          <div>
+            <h2>เข้าสู่ระบบแอดมิน</h2>
+            <p>ใช้บัญชี Supabase Auth ที่ถูกเพิ่มใน `shop_admins`</p>
+          </div>
+        </div>
+        <form class="admin-form" id="loginForm">
+          <label class="field">
+            <span>Email</span>
+            <input id="loginEmail" type="email" autocomplete="email" required>
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input id="loginPassword" type="password" autocomplete="current-password" required>
+          </label>
+          <button class="primary-btn" type="submit">เข้าสู่ระบบ</button>
+        </form>
+      </section>
+
+      <section class="admin-panel is-hidden" id="dashboardPanel">
+        <div class="admin-panel-head">
+          <div>
+            <h2 id="adminShopName">ร้านค้า</h2>
+            <p id="adminUserLabel">กำลังโหลดข้อมูล</p>
+          </div>
+          <label class="field shop-picker">
+            <span>เลือกร้าน</span>
+            <select id="shopSelect"></select>
+          </label>
+        </div>
+
+        <nav class="admin-tabs" aria-label="เมนูหลังบ้าน">
+          <button class="tab-btn is-active" type="button" data-admin-tab="settings">ตั้งค่าร้าน</button>
+          <button class="tab-btn" type="button" data-admin-tab="products">สินค้า</button>
+          <button class="tab-btn" type="button" data-admin-tab="orders">ออเดอร์</button>
+          <button class="tab-btn" type="button" data-admin-tab="members">สมาชิก</button>
+        </nav>
+
+        <section class="admin-view" id="settingsView"></section>
+        <section class="admin-view is-hidden" id="productsView"></section>
+        <section class="admin-view is-hidden" id="ordersView"></section>
+        <section class="admin-view is-hidden" id="membersView"></section>
+      </section>
+    </main>
+
+    <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/services/supabaseClient.js"></script>
+    <script src="js/services/shopService.js"></script>
+    <script src="js/services/productService.js"></script>
+    <script src="js/services/orderService.js"></script>
+    <script src="js/services/memberService.js"></script>
+    <script src="js/services/adminService.js"></script>
+    <script src="js/services/uploadService.js"></script>
+    <script src="js/admin.js"></script>
+  </body>
+</html>

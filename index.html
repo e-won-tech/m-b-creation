@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3B9344">
+    <title>LIFF Shop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="site-header">
+        <div class="head-row">
+          <div class="brand-lockup">
+            <div class="logo" id="logo" aria-hidden="true"></div>
+            <div class="brand-copy">
+              <h1 class="shop-name" id="shopName">LIFF Shop</h1>
+              <p class="shop-tag" id="shopTag">สั่งซื้อผ่าน LINE ได้ทันที</p>
+            </div>
+          </div>
+          <div class="head-actions">
+            <button class="icon-btn member-btn" id="memberBtn" type="button" aria-label="สมาชิก">
+              <span data-icon="user" aria-hidden="true"></span>
+            </button>
+            <button class="icon-btn cart-btn" id="cartBtn" type="button" aria-label="ตะกร้าสินค้า">
+              <span data-icon="cart" aria-hidden="true"></span>
+              <span class="badge" id="badge">0</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="shop-main">
+        <section class="search-panel" aria-label="ค้นหาและหมวดหมู่">
+          <label class="search-box">
+            <span data-icon="search" aria-hidden="true"></span>
+            <input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหาสินค้า">
+          </label>
+          <div class="status-banner is-hidden" id="statusBanner"></div>
+          <div class="cat-row" id="catRow" aria-label="หมวดหมู่สินค้า"></div>
+        </section>
+
+        <section class="product-section" aria-live="polite">
+          <div class="section-title">
+            <div>
+              <h2 id="sectionTitle">สินค้าแนะนำ</h2>
+              <p id="sectionSub">เลือกสินค้าแล้วส่งออเดอร์เข้า LINE</p>
+            </div>
+            <span class="pill" id="productCount">0 รายการ</span>
+          </div>
+          <div class="grid" id="productGrid"></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="sheet-layer" id="sheetLayer" aria-hidden="true">
+      <div class="sheet-overlay" data-close-sheet></div>
+      <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="sheet-handle"></div>
+        <button class="sheet-close" type="button" data-close-sheet aria-label="ปิด">×</button>
+        <div class="sheet-body" id="sheetBody"></div>
+      </section>
+    </div>
+
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+      <button class="lightbox-close" id="lightboxClose" type="button" aria-label="ปิดรูป">×</button>
+      <img id="lightboxImg" alt="">
+    </div>
+
+    <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/services/supabaseClient.js"></script>
+    <script src="js/services/shopService.js"></script>
+    <script src="js/services/productService.js"></script>
+    <script src="js/services/orderService.js"></script>
+    <script src="js/services/memberService.js"></script>
+    <script src="js/services/adminService.js"></script>
+    <script src="js/services/uploadService.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

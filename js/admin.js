@@ -1,0 +1,575 @@
+(function () {
+  const state = {
+    user: null,
+    access: [],
+    shop: null,
+    products: [],
+    orders: [],
+    members: [],
+    tab: "settings",
+    editingProductId: ""
+  };
+
+  const els = {};
+
+  document.addEventListener("DOMContentLoaded", initAdmin);
+
+  async function initAdmin() {
+    bindAdminElements();
+    bindAdminEvents();
+
+    if (!window.SHOP_CONFIG?.useSupabase) {
+      showSetupOnly();
+      return;
+    }
+
+    els.setupPanel.classList.add("is-hidden");
+    await refreshSession();
+  }
+
+  function bindAdminElements() {
+    Object.assign(els, {
+      setupPanel: document.querySelector("#setupPanel"),
+      loginPanel: document.querySelector("#loginPanel"),
+      dashboardPanel: document.querySelector("#dashboardPanel"),
+      loginForm: document.querySelector("#loginForm"),
+      logoutBtn: document.querySelector("#logoutBtn"),
+      shopSelect: document.querySelector("#shopSelect"),
+      adminShopName: document.querySelector("#adminShopName"),
+      adminUserLabel: document.querySelector("#adminUserLabel"),
+      settingsView: document.querySelector("#settingsView"),
+      productsView: document.querySelector("#productsView"),
+      ordersView: document.querySelector("#ordersView"),
+      membersView: document.querySelector("#membersView"),
+      toastWrap: document.querySelector("#toastWrap")
+    });
+  }
+
+  function bindAdminEvents() {
+    els.loginForm.addEventListener("submit", loginAdmin);
+    els.logoutBtn.addEventListener("click", logoutAdmin);
+    els.shopSelect.addEventListener("change", () => selectShop(els.shopSelect.value));
+    document.querySelectorAll("[data-admin-tab]").forEach((button) => {
+      button.addEventListener("click", () => switchTab(button.dataset.adminTab));
+    });
+  }
+
+  function showSetupOnly() {
+    els.setupPanel.classList.remove("is-hidden");
+    els.loginPanel.classList.add("is-hidden");
+    els.dashboardPanel.classList.add("is-hidden");
+  }
+
+  async function refreshSession() {
+    setLoading("กำลังตรวจสอบสิทธิ์");
+    try {
+      const user = await window.ShopServices.adminService.getCurrentUser();
+      if (!user) {
+        showLogin();
+        return;
+      }
+      state.user = user;
+      const access = await window.ShopServices.adminService.getAdminShopAccess(user.id);
+      if (!access.length) {
+        showLogin("บัญชีนี้ไม่มีสิทธิ์จัดการร้าน");
+        return;
+      }
+      state.access = access;
+      showDashboard();
+      await selectShop(access[0].shop_id);
+    } catch (error) {
+      console.error(error);
+      showLogin(error.message || "เข้าสู่ระบบแอดมินไม่สำเร็จ");
+    }
+  }
+
+  async function loginAdmin(event) {
+    event.preventDefault();
+    const supabase = window.ShopServices.core.requireSupabaseClient();
+    const email = document.querySelector("#loginEmail").value.trim();
+    const password = document.querySelector("#loginPassword").value;
+    setLoading("กำลังเข้าสู่ระบบ");
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      console.error(error);
+      showLogin("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      return;
+    }
+    state.user = data.user;
+    await refreshSession();
+  }
+
+  async function logoutAdmin() {
+    const supabase = window.ShopServices.core.requireSupabaseClient();
+    await supabase.auth.signOut();
+    state.user = null;
+    state.access = [];
+    state.shop = null;
+    showLogin("ออกจากระบบแล้ว");
+  }
+
+  function showLogin(message = "") {
+    els.loginPanel.classList.remove("is-hidden");
+    els.dashboardPanel.classList.add("is-hidden");
+    els.logoutBtn.classList.add("is-hidden");
+    if (message) toast(message);
+  }
+
+  function showDashboard() {
+    els.loginPanel.classList.add("is-hidden");
+    els.dashboardPanel.classList.remove("is-hidden");
+    els.logoutBtn.classList.remove("is-hidden");
+    els.adminUserLabel.textContent = state.user?.email || "แอดมิน";
+    els.shopSelect.innerHTML = state.access.map((item) => `<option value="${escapeAttr(item.shop_id)}">${escapeHtml(item.shops?.shop_name || item.shops?.slug || item.shop_id)} (${escapeHtml(item.role)})</option>`).join("");
+  }
+
+  async function selectShop(shopId) {
+    const access = state.access.find((item) => item.shop_id === shopId);
+    if (!access) return;
+    state.shop = {
+      ...access.shops,
+      id: access.shop_id,
+      role: access.role
+    };
+    els.shopSelect.value = shopId;
+    els.adminShopName.textContent = state.shop.shop_name || "ร้านค้า";
+    await loadActiveTab();
+  }
+
+  function switchTab(tab) {
+    state.tab = tab;
+    document.querySelectorAll("[data-admin-tab]").forEach((button) => button.classList.toggle("is-active", button.dataset.adminTab === tab));
+    [els.settingsView, els.productsView, els.ordersView, els.membersView].forEach((view) => view.classList.add("is-hidden"));
+    document.querySelector(`#${tab}View`).classList.remove("is-hidden");
+    loadActiveTab();
+  }
+
+  async function loadActiveTab() {
+    if (!state.shop?.id) return;
+    try {
+      if (state.tab === "settings") renderSettings();
+      if (state.tab === "products") await loadProductsView();
+      if (state.tab === "orders") await loadOrdersView();
+      if (state.tab === "members") await loadMembersView();
+    } catch (error) {
+      console.error(error);
+      toast(error.message || "โหลดข้อมูลไม่สำเร็จ");
+    }
+  }
+
+  function renderSettings() {
+    els.settingsView.innerHTML = `
+      <form class="admin-form" id="settingsForm">
+        <div class="admin-grid">
+          <label class="field">
+            <span>ชื่อร้าน</span>
+            <input name="shop_name" value="${escapeAttr(state.shop.shop_name || "")}" required>
+          </label>
+          <label class="field">
+            <span>LIFF ID</span>
+            <input name="liff_id" value="${escapeAttr(state.shop.liff_id || "")}">
+          </label>
+          <label class="field span-2">
+            <span>Tagline</span>
+            <input name="tagline" value="${escapeAttr(state.shop.tagline || "")}">
+          </label>
+          <label class="field span-2">
+            <span>Logo URL</span>
+            <input name="logo_url" value="${escapeAttr(state.shop.logo_url || "")}">
+          </label>
+        </div>
+        <button class="primary-btn" type="submit">บันทึกตั้งค่าร้าน</button>
+      </form>
+    `;
+    document.querySelector("#settingsForm").addEventListener("submit", saveSettings);
+  }
+
+  async function saveSettings(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      shop_name: form.get("shop_name").trim(),
+      tagline: form.get("tagline").trim(),
+      logo_url: form.get("logo_url").trim(),
+      liff_id: form.get("liff_id").trim()
+    };
+    const updated = await window.ShopServices.shopService.updateShopSettings(state.shop.id, payload);
+    state.shop = { ...state.shop, ...updated };
+    els.adminShopName.textContent = state.shop.shop_name;
+    toast("บันทึกตั้งค่าร้านแล้ว");
+    renderSettings();
+  }
+
+  async function loadProductsView() {
+    els.productsView.innerHTML = `<div class="admin-empty">กำลังโหลดสินค้า</div>`;
+    state.products = await window.ShopServices.productService.loadProducts(state.shop.id, { activeOnly: false });
+    renderProducts();
+  }
+
+  function renderProducts() {
+    const editing = state.products.find((item) => item.id === state.editingProductId) || {};
+    els.productsView.innerHTML = `
+      <form class="admin-form" id="productForm">
+        <div class="admin-panel-head">
+          <div>
+            <h2>${editing.id ? "แก้ไขสินค้า" : "เพิ่มสินค้า"}</h2>
+            <p>ใช้ icon_name เช่น package, cup, coffee, cookie, chocolate, bag, gift</p>
+          </div>
+          <button class="ghost-btn compact-btn" type="button" id="resetProductForm">ล้างฟอร์ม</button>
+        </div>
+        <input type="hidden" name="id" value="${escapeAttr(editing.id || "")}">
+        <div class="admin-grid">
+          <label class="field">
+            <span>ชื่อสินค้า</span>
+            <input name="name" value="${escapeAttr(editing.name || "")}" required>
+          </label>
+          <label class="field">
+            <span>หมวดหมู่</span>
+            <input name="category_name" value="${escapeAttr(editing.category_name || "")}">
+          </label>
+          <label class="field">
+            <span>ขนาด</span>
+            <input name="pack" value="${escapeAttr(editing.pack || "")}">
+          </label>
+          <label class="field">
+            <span>ราคา</span>
+            <input name="price" type="number" min="0" step="0.01" value="${escapeAttr(editing.price ?? 0)}" required>
+          </label>
+          <label class="field">
+            <span>สต็อก</span>
+            <input name="stock" type="number" min="0" step="1" value="${escapeAttr(editing.stock ?? "")}" placeholder="ว่าง = ไม่จำกัด">
+          </label>
+          <label class="field span-2">
+            <span>รายละเอียด</span>
+            <textarea name="description">${escapeHtml(editing.description || "")}</textarea>
+          </label>
+          <label class="field span-2">
+            <span>อัตราการใช้</span>
+            <textarea name="usage_rate" placeholder="เช่น 200 กรัมต่อน้ำ 200 ลิตร">${escapeHtml(editing.usage_rate || "")}</textarea>
+          </label>
+          ${renderImageField("image", "รูปสินค้า", editing.image_url, editing.image_public_id)}
+          ${renderImageField("image2", "รูปสินค้า 2", editing.image2_url, editing.image2_public_id)}
+          <label class="check-row"><input name="featured" type="checkbox" ${editing.featured ? "checked" : ""}> แสดงในแนะนำ</label>
+          <label class="check-row"><input name="active" type="checkbox" ${editing.id ? editing.active ? "checked" : "" : "checked"}> เปิดขาย</label>
+        </div>
+        <button class="primary-btn" type="submit">${editing.id ? "บันทึกสินค้า" : "เพิ่มสินค้า"}</button>
+      </form>
+      ${renderProductTable()}
+    `;
+
+    document.querySelector("#productForm").addEventListener("submit", saveProduct);
+    bindImageInputs();
+    document.querySelector("#resetProductForm").addEventListener("click", () => {
+      state.editingProductId = "";
+      renderProducts();
+    });
+    document.querySelectorAll("[data-edit-product]").forEach((button) => button.addEventListener("click", () => {
+      state.editingProductId = button.dataset.editProduct;
+      renderProducts();
+    }));
+    document.querySelectorAll("[data-hide-product]").forEach((button) => button.addEventListener("click", () => hideProduct(button.dataset.hideProduct)));
+  }
+
+  function renderProductTable() {
+    if (!state.products.length) return `<div class="admin-empty">ยังไม่มีสินค้า</div>`;
+    return `
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>สินค้า</th>
+              <th>หมวด</th>
+              <th>ราคา</th>
+              <th>สต็อก</th>
+              <th>สถานะ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.products.map((product) => `
+              <tr>
+                <td><strong>${escapeHtml(product.name)}</strong><div class="admin-muted">${escapeHtml(product.pack || "")}</div></td>
+                <td>${escapeHtml(product.category_name || "-")}</td>
+                <td>${money(product.price)}</td>
+                <td>${product.stock === null ? "ไม่จำกัด" : escapeHtml(product.stock)}</td>
+                <td><span class="status-pill">${product.active ? "เปิดขาย" : "ซ่อน"}</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="mini-btn" type="button" data-edit-product="${escapeAttr(product.id)}">แก้ไข</button>
+                    <button class="mini-btn danger" type="button" data-hide-product="${escapeAttr(product.id)}">ซ่อน</button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderImageField(field, label, currentUrl, currentPublicId) {
+    const hasImage = Boolean(currentUrl);
+    return `
+      <div class="field span-2 upload-field">
+        <span>${escapeHtml(label)}</span>
+        <div class="upload-row">
+          <div class="upload-preview ${hasImage ? "has-image" : ""}" data-preview="${field}">
+            ${hasImage ? `<img src="${escapeAttr(currentUrl)}" alt="">` : `<span class="upload-empty">ไม่มีรูป</span>`}
+          </div>
+          <div class="upload-controls">
+            <label class="upload-btn">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              <span>เลือกรูปภาพ</span>
+              <input type="file" name="${field}_file" accept="image/*" data-image-input="${field}" hidden>
+            </label>
+            <div class="upload-meta">
+              <span class="upload-filename" data-filename="${field}">${hasImage ? "ใช้รูปเดิม" : "ยังไม่ได้เลือกไฟล์"}</span>
+              <button type="button" class="upload-clear ${hasImage ? "" : "is-hidden"}" data-clear-image="${field}">ลบรูป</button>
+            </div>
+            <p class="upload-hint">รองรับ JPG, PNG, WEBP — อัปโหลดขึ้น Cloudinary อัตโนมัติ</p>
+          </div>
+        </div>
+        <input type="hidden" name="${field}_url" value="${escapeAttr(currentUrl || "")}">
+        <input type="hidden" name="${field}_public_id" value="${escapeAttr(currentPublicId || "")}">
+      </div>
+    `;
+  }
+
+  function bindImageInputs() {
+    document.querySelectorAll("[data-image-input]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const field = input.dataset.imageInput;
+        const file = input.files?.[0];
+        const preview = document.querySelector(`[data-preview="${field}"]`);
+        const filename = document.querySelector(`[data-filename="${field}"]`);
+        const clearBtn = document.querySelector(`[data-clear-image="${field}"]`);
+        if (file) {
+          if (preview) {
+            preview.classList.add("has-image");
+            preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="">`;
+          }
+          if (filename) filename.textContent = file.name;
+          if (clearBtn) clearBtn.classList.remove("is-hidden");
+        }
+      });
+    });
+    document.querySelectorAll("[data-clear-image]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const field = button.dataset.clearImage;
+        const form = button.closest("form");
+        if (!form) return;
+        form.querySelector(`input[name="${field}_url"]`).value = "";
+        form.querySelector(`input[name="${field}_public_id"]`).value = "";
+        const fileInput = form.querySelector(`input[name="${field}_file"]`);
+        if (fileInput) fileInput.value = "";
+        const preview = document.querySelector(`[data-preview="${field}"]`);
+        if (preview) {
+          preview.classList.remove("has-image");
+          preview.innerHTML = `<span class="upload-empty">ไม่มีรูป</span>`;
+        }
+        const filename = document.querySelector(`[data-filename="${field}"]`);
+        if (filename) filename.textContent = "ยังไม่ได้เลือกไฟล์";
+        button.classList.add("is-hidden");
+      });
+    });
+  }
+
+  async function resolveImageField(form, field) {
+    const fileInput = form.querySelector(`input[name="${field}_file"]`);
+    const file = fileInput?.files?.[0];
+    if (file) {
+      const uploaded = await window.ShopServices.uploadService.uploadProductImage(file, state.shop.id);
+      return { url: uploaded.url, publicId: uploaded.publicId };
+    }
+    return {
+      url: form.querySelector(`input[name="${field}_url"]`)?.value || "",
+      publicId: form.querySelector(`input[name="${field}_public_id"]`)?.value || ""
+    };
+  }
+
+  async function saveProduct(event) {
+    event.preventDefault();
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
+    const id = form.get("id");
+    const submitBtn = formEl.querySelector("button[type='submit']");
+    const originalLabel = submitBtn?.textContent;
+
+    try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "กำลังบันทึก...";
+      }
+
+      const image = await resolveImageField(formEl, "image");
+      const image2 = await resolveImageField(formEl, "image2");
+      const existing = state.products.find((item) => item.id === id);
+
+      const payload = {
+        name: form.get("name"),
+        category_name: form.get("category_name"),
+        pack: form.get("pack"),
+        price: form.get("price"),
+        stock: form.get("stock"),
+        icon_name: existing?.icon_name || "package",
+        description: form.get("description"),
+        usage_rate: form.get("usage_rate"),
+        image_url: image.url,
+        image_public_id: image.publicId,
+        image2_url: image2.url,
+        image2_public_id: image2.publicId,
+        featured: form.has("featured"),
+        active: form.has("active")
+      };
+      if (id) {
+        await window.ShopServices.productService.updateProduct(id, payload);
+        toast("บันทึกสินค้าแล้ว");
+      } else {
+        await window.ShopServices.productService.createProduct(state.shop.id, payload);
+        toast("เพิ่มสินค้าแล้ว");
+      }
+      state.editingProductId = "";
+      await loadProductsView();
+    } catch (error) {
+      console.error(error);
+      toast(error.message || "บันทึกสินค้าไม่สำเร็จ");
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+    }
+  }
+
+  async function hideProduct(productId) {
+    await window.ShopServices.productService.softDeleteProduct(productId);
+    toast("ซ่อนสินค้าแล้ว");
+    await loadProductsView();
+  }
+
+  async function loadOrdersView() {
+    els.ordersView.innerHTML = `<div class="admin-empty">กำลังโหลดออเดอร์</div>`;
+    state.orders = await window.ShopServices.orderService.loadOrders(state.shop.id);
+    renderOrders();
+  }
+
+  function renderOrders() {
+    if (!state.orders.length) {
+      els.ordersView.innerHTML = `<div class="admin-empty">ยังไม่มีรายการขาย</div>`;
+      return;
+    }
+    const statuses = ["pending", "confirmed", "waiting_payment", "paid", "packing", "shipped", "completed", "cancelled"];
+    els.ordersView.innerHTML = `
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>เลขออเดอร์</th>
+              <th>ลูกค้า</th>
+              <th>ยอดรวม</th>
+              <th>สถานะ</th>
+              <th>วันที่</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.orders.map((order) => `
+              <tr>
+                <td><strong>${escapeHtml(order.order_no || order.id)}</strong><div class="admin-muted">${escapeHtml(order.pay_method || "")}</div></td>
+                <td>${escapeHtml(order.customer_name || order.line_display_name || "-")}</td>
+                <td>${money(order.total)}</td>
+                <td>
+                  <select data-order-status="${escapeAttr(order.id)}">
+                    ${statuses.map((status) => `<option value="${status}" ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}
+                  </select>
+                </td>
+                <td>${formatDate(order.created_at)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+    document.querySelectorAll("[data-order-status]").forEach((select) => select.addEventListener("change", () => updateOrderStatus(select.dataset.orderStatus, select.value)));
+  }
+
+  async function updateOrderStatus(orderId, status) {
+    await window.ShopServices.orderService.updateOrderStatus(orderId, status);
+    toast("อัปเดตสถานะออเดอร์แล้ว");
+    await loadOrdersView();
+  }
+
+  async function loadMembersView() {
+    els.membersView.innerHTML = `<div class="admin-empty">กำลังโหลดสมาชิก</div>`;
+    state.members = await window.ShopServices.memberService.loadMembers(state.shop.id);
+    renderMembers();
+  }
+
+  function renderMembers() {
+    if (!state.members.length) {
+      els.membersView.innerHTML = `<div class="admin-empty">ยังไม่มีสมาชิก</div>`;
+      return;
+    }
+    els.membersView.innerHTML = `
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>สมาชิก</th>
+              <th>ระดับ</th>
+              <th>คะแนน</th>
+              <th>ยอดซื้อสะสม</th>
+              <th>อัปเดตล่าสุด</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.members.map((member) => `
+              <tr>
+                <td><strong>${escapeHtml(member.display_name || "-")}</strong><div class="admin-muted">${escapeHtml(member.line_user_id)}</div></td>
+                <td><span class="status-pill">${escapeHtml(member.tier)}</span></td>
+                <td>${escapeHtml(member.points)}</td>
+                <td>${money(member.total_spent)}</td>
+                <td>${formatDate(member.updated_at)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function setLoading(message) {
+    els.loginPanel.classList.add("is-hidden");
+    els.dashboardPanel.classList.add("is-hidden");
+    els.setupPanel.classList.remove("is-hidden");
+    els.setupPanel.innerHTML = `<h2>${escapeHtml(message)}</h2><p>กรุณารอสักครู่</p>`;
+  }
+
+  function toast(message) {
+    const node = document.createElement("div");
+    node.className = "toast";
+    node.textContent = message;
+    els.toastWrap.append(node);
+    setTimeout(() => node.remove(), 2800);
+  }
+
+  function money(value) {
+    return `${window.SHOP_CONFIG?.currency || "฿"}${Number(value || 0).toLocaleString("th-TH")}`;
+  }
+
+  function formatDate(value) {
+    if (!value) return "-";
+    return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value);
+  }
+})();
