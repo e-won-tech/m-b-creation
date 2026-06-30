@@ -867,6 +867,40 @@ body.sheet-open {
   line-height: 1.5;
 }
 
+.pay-qr {
+  display: block;
+  width: min(260px, 70%);
+  margin: 14px auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+.pay-info {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.pay-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+}
+
+.pay-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pay-row strong {
+  color: var(--ink);
+  text-align: right;
+}
+
 .order-summary {
   width: 100%;
   min-height: 210px;

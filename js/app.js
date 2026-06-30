@@ -717,7 +717,7 @@ async function submitOrder(event) {
   if (SHOP_CONFIG.useSupabase && CURRENT_SHOP?.slug && window.ShopServices?.orderService) {
     try {
       const result = await createOrderViaDataLayer(values);
-      await sendOrderMessage(result.message);
+      await sendOrderMessage(result.message, buildOrderFlex(values, result));
       return;
     } catch (error) {
       console.error(error);
@@ -897,10 +897,79 @@ async function saveMemberOrder(values) {
   }
 }
 
-async function sendOrderMessage(message) {
+function buildOrderFlex(values, result) {
+  const theme = (window.SHOP_CONFIG?.theme) || (window.THEME_PRESETS?.[window.SHOP_CONFIG?.themePreset]) || {};
+  const primary = theme.primary || "#3B9344";
+  const total = Number(result?.total ?? cartTotal());
+  const orderNo = result?.order_no || "";
+  const payUri = `https://liff.line.me/${SHOP_CONFIG.liffId}?view=payment&order=${encodeURIComponent(orderNo)}&amount=${total}`;
+
+  const itemRows = values.items.map((item) => ({
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      { type: "text", text: `${item.name} x${item.qty}`, size: "sm", color: "#444444", wrap: true, flex: 5 },
+      { type: "text", text: money(item.price * item.qty), size: "sm", color: "#111111", align: "end", flex: 3 }
+    ]
+  }));
+
+  return {
+    type: "flex",
+    altText: `คำสั่งซื้อ ${orderNo} ยอดรวม ${money(total)}`,
+    contents: {
+      type: "bubble",
+      header: {
+        type: "box",
+        layout: "vertical",
+        backgroundColor: primary,
+        paddingAll: "16px",
+        contents: [
+          { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", color: "#FFFFFF", weight: "bold", size: "lg", wrap: true },
+          { type: "text", text: `เลขออเดอร์ ${orderNo}`, color: "#FFFFFFCC", size: "sm", margin: "sm" }
+        ]
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          ...itemRows,
+          { type: "separator", margin: "md" },
+          {
+            type: "box",
+            layout: "horizontal",
+            margin: "md",
+            contents: [
+              { type: "text", text: "ยอดรวม", size: "md", weight: "bold", color: "#111111" },
+              { type: "text", text: money(total), size: "md", weight: "bold", color: primary, align: "end" }
+            ]
+          },
+          ...(values.customer ? [{ type: "text", text: `ผู้สั่ง: ${values.customer}`, size: "xs", color: "#888888", margin: "md", wrap: true }] : []),
+          ...(values.shipping ? [{ type: "text", text: `จัดส่ง: ${values.shipping}`, size: "xs", color: "#888888", wrap: true }] : [])
+        ]
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: primary,
+            action: { type: "uri", label: "💳 ชำระเงิน", uri: payUri }
+          },
+          { type: "text", text: "กดเพื่อดู QR และเลขบัญชี", size: "xxs", color: "#aaaaaa", align: "center" }
+        ]
+      }
+    }
+  };
+}
+
+async function sendOrderMessage(message, flexMessage = null) {
   if (canSendLiffMessage()) {
     try {
-      await liff.sendMessages([{ type: "text", text: message }]);
+      await liff.sendMessages([flexMessage || { type: "text", text: message }]);
       Object.keys(cart).forEach((key) => delete cart[key]);
       updateBadge();
       openSheet(`
@@ -1173,6 +1242,46 @@ function handleQueryString() {
     if (product) openDetail(product.id);
   }
   if (params.get("view") === "member" || params.get("history") === "1") openMember();
+  if (params.get("view") === "payment") openPayment(params.get("order"), params.get("amount"));
+}
+
+function openPayment(orderNo, amount) {
+  const shop = CURRENT_SHOP || {};
+  const hasInfo = shop.payment_image_url || shop.payment_bank || shop.payment_account_no;
+
+  if (!hasInfo) {
+    openSheet(`
+      <h2 class="sheet-title" id="sheetTitle">ชำระเงิน</h2>
+      <div class="empty-state">ร้านยังไม่ได้ตั้งค่าข้อมูลการชำระเงิน</div>
+    `);
+    return;
+  }
+
+  openSheet(`
+    <h2 class="sheet-title" id="sheetTitle">ชำระเงิน</h2>
+    ${orderNo ? `<div class="pack">ออเดอร์ ${escapeHtml(orderNo)}</div>` : ""}
+    ${amount ? `<div class="cart-total price-row"><span>ยอดที่ต้องชำระ</span><strong>${money(Number(amount))}</strong></div>` : ""}
+    ${shop.payment_image_url ? `<img class="pay-qr" src="${escapeAttr(shop.payment_image_url)}" alt="QR ชำระเงิน">` : ""}
+    <div class="pay-info">
+      ${shop.payment_bank ? `<div class="pay-row"><span>ธนาคาร</span><strong>${escapeHtml(shop.payment_bank)}</strong></div>` : ""}
+      ${shop.payment_account_no ? `<div class="pay-row"><span>เลขบัญชี</span><strong id="payAcct">${escapeHtml(shop.payment_account_no)}</strong></div>` : ""}
+      ${shop.payment_account_name ? `<div class="pay-row"><span>ชื่อบัญชี</span><strong>${escapeHtml(shop.payment_account_name)}</strong></div>` : ""}
+    </div>
+    ${shop.payment_note ? `<p class="form-note">${escapeHtml(shop.payment_note)}</p>` : ""}
+    <div class="action-stack">
+      ${shop.payment_account_no ? `<button class="primary-btn" type="button" id="copyAcct">คัดลอกเลขบัญชี</button>` : ""}
+      <button class="ghost-btn" type="button" data-close-sheet>ปิด</button>
+    </div>
+  `);
+
+  document.querySelector("#copyAcct")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard?.writeText(shop.payment_account_no);
+      toast("คัดลอกเลขบัญชีแล้ว");
+    } catch (error) {
+      toast("คัดลอกไม่สำเร็จ");
+    }
+  });
 }
 
 function openSheet(html) {
