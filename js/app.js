@@ -944,7 +944,8 @@ async function initLiff() {
       await refreshMember();
     }
   } catch (error) {
-    toast("LIFF ยังไม่พร้อมใช้งานในหน้านี้");
+    console.error("LIFF init error:", error);
+    toast(`LIFF error: ${error?.code || ""} ${error?.message || error}`.trim());
   }
 }
 
