@@ -329,6 +329,7 @@
           </label>
           ${renderImageField("image", "รูปสินค้า", editing.image_url, editing.image_public_id)}
           ${renderImageField("image2", "รูปสินค้า 2", editing.image2_url, editing.image2_public_id)}
+          <label class="check-row"><input name="is_sack" type="checkbox" ${editing.is_sack ? "checked" : ""}> เป็นสินค้ากระสอบ (ใช้ขนส่งเอกชน)</label>
           <label class="check-row"><input name="featured" type="checkbox" ${editing.featured ? "checked" : ""}> แสดงในแนะนำ</label>
           <label class="check-row"><input name="active" type="checkbox" ${editing.id ? editing.active ? "checked" : "" : "checked"}> เปิดขาย</label>
         </div>
@@ -500,6 +501,7 @@
         image_public_id: image.publicId,
         image2_url: image2.url,
         image2_public_id: image2.publicId,
+        is_sack: form.has("is_sack"),
         featured: form.has("featured"),
         active: form.has("active")
       };

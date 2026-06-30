@@ -36,6 +36,7 @@ let MEMBER_UID = "";
 let MEMBER_NAME = "";
 let MEMBER_PROFILE = null;
 let MEMBER_DATA = null;
+let LAST_CONTACT = null;
 
 const cart = {};
 const els = {};
@@ -241,6 +242,7 @@ function normalizeProducts(products = []) {
       image2: item.image2 || item.image2_url || "",
       desc: item.desc || item.description || "",
       usage: item.usage || item.usage_rate || "",
+      isSack: toBool(item.isSack ?? item.is_sack ?? false),
       stock: item.stock === null || item.stock === undefined || item.stock === "" ? null : Number(item.stock),
       featured: toBool(item.featured),
       active: item.active === undefined ? true : toBool(item.active)
@@ -495,11 +497,11 @@ function renderCart() {
       </div>
       <label class="field">
         <span>ชื่อผู้สั่ง</span>
-        <input id="customerInput" placeholder="เช่น คุณมายด์">
+        <input id="customerInput" value="${escapeAttr(LAST_CONTACT?.name || MEMBER_NAME || "")}" placeholder="เช่น คุณมายด์">
       </label>
       <label class="field">
         <span>เบอร์โทรศัพท์</span>
-        <input id="phoneInput" type="tel" inputmode="tel" autocomplete="tel" placeholder="08x-xxx-xxxx">
+        <input id="phoneInput" type="tel" inputmode="tel" autocomplete="tel" value="${escapeAttr(LAST_CONTACT?.phone || "")}" placeholder="08x-xxx-xxxx">
       </label>
       <div class="detail-stack" id="shippingDetails"></div>
       <label class="field">
@@ -514,6 +516,7 @@ function renderCart() {
         <span>ข้อมูลใบกำกับภาษี</span>
         <textarea id="taxInput" placeholder="ชื่อบริษัท / เลขประจำตัวผู้เสียภาษี / ที่อยู่"></textarea>
       </label>
+      <div class="order-summary-box" id="orderSummary"></div>
       <button class="primary-btn" type="submit">ยืนยันและส่งออเดอร์เข้า LINE</button>
     </form>
   `);
@@ -534,6 +537,43 @@ function renderCart() {
 function onShippingChange(shipping) {
   renderPayOptions(shipping);
   renderShippingDetails(shipping);
+  updateOrderSummary(shipping);
+}
+
+// คำนวณค่าส่งตามกฎ (ฝั่ง client เพื่อแสดงผล/เตือนล่วงหน้า — ฝั่ง RPC คิดซ้ำเป็นค่าจริง)
+function computeShipping(shipping, items = cartItems()) {
+  const totalQty = items.reduce((sum, item) => sum + item.qty, 0);
+  const sackQty = items.filter((item) => item.isSack).reduce((sum, item) => sum + item.qty, 0);
+  const nonSackQty = totalQty - sackQty;
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+  if (String(shipping).startsWith("จัดส่งขนส่งเอกชน")) {
+    if (nonSackQty > 0) return { fee: 0, error: "ขนส่งเอกชนรับเฉพาะสินค้ากระสอบเท่านั้น" };
+    if (sackQty < 15) return { fee: 0, error: `ขนส่งเอกชนสั่งขั้นต่ำ 15 กระสอบ (ตอนนี้ ${sackQty})` };
+    return { fee: sackQty * 60, error: null };
+  }
+  if (shipping === "รับสินค้าด้วยตัวเอง") {
+    if (subtotal < 5000) return { fee: 0, error: `รับสินค้าเองสั่งขั้นต่ำ 5,000 บาท (ตอนนี้ ${money(subtotal)})` };
+    return { fee: 0, error: null };
+  }
+  return { fee: 60 + Math.max(0, totalQty - 1) * 10, error: null };
+}
+
+function updateOrderSummary(shipping = document.querySelector('input[name="shipping"]:checked')?.value) {
+  const box = document.querySelector("#orderSummary");
+  if (!box) return;
+  const subtotal = cartTotal();
+  const result = computeShipping(shipping);
+
+  box.innerHTML = `
+    <div class="summary-row"><span>ค่าสินค้า</span><span>${money(subtotal)}</span></div>
+    ${result.error
+      ? `<div class="summary-warn">${escapeHtml(result.error)}</div>`
+      : `<div class="summary-row"><span>ค่าจัดส่ง</span><span>${result.fee ? money(result.fee) : "ฟรี"}</span></div>
+         <div class="summary-row summary-grand"><span>ยอดรวมทั้งหมด</span><strong>${money(subtotal + result.fee)}</strong></div>`}
+  `;
+  const submit = document.querySelector("#orderForm button[type='submit']");
+  if (submit) submit.disabled = Boolean(result.error);
 }
 
 function renderPayOptions(shipping) {
@@ -554,12 +594,14 @@ const PICKUP_WINDOWS = [
   { label: "ช่วงบ่าย (13.30 - 15.30)", slots: ["13:30", "14:00", "14:30", "15:00", "15:30"] }
 ];
 
-const ADDRESS_FIELD = `
+function addressField() {
+  return `
   <label class="field">
     <span>ที่อยู่จัดส่ง</span>
-    <textarea id="addressInput" placeholder="บ้านเลขที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด รหัสไปรษณีย์"></textarea>
+    <textarea id="addressInput" placeholder="บ้านเลขที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด รหัสไปรษณีย์">${escapeHtml(LAST_CONTACT?.address || "")}</textarea>
   </label>
 `;
+}
 
 function renderShippingDetails(shipping) {
   const box = document.querySelector("#shippingDetails");
@@ -591,7 +633,7 @@ function renderShippingDetails(shipping) {
 
   if (String(shipping).startsWith("จัดส่งขนส่งเอกชน")) {
     box.innerHTML = `
-      ${ADDRESS_FIELD}
+      ${addressField()}
       <div class="field">
         <span>การจัดขนส่งเอกชน</span>
         <div class="radio-group" id="carrierGroup">
@@ -618,7 +660,7 @@ function renderShippingDetails(shipping) {
     return;
   }
 
-  box.innerHTML = ADDRESS_FIELD;
+  box.innerHTML = addressField();
 }
 
 function toggleCarrierName(choice) {
@@ -714,6 +756,12 @@ async function submitOrder(event) {
     return;
   }
 
+  const shipping = computeShipping(values.shipping, values.items);
+  if (shipping.error) {
+    toast(shipping.error);
+    return;
+  }
+
   if (SHOP_CONFIG.useSupabase && CURRENT_SHOP?.slug && window.ShopServices?.orderService) {
     try {
       const result = await createOrderViaDataLayer(values);
@@ -748,6 +796,9 @@ async function createOrderViaDataLayer(values) {
     line_display_name: MEMBER_NAME || "",
     line_picture_url: MEMBER_PROFILE?.pictureUrl || "",
     customer_name: values.customer,
+    customer_phone: values.phone,
+    customer_address: isPickup(values) ? "" : values.address,
+    shipping_method: values.shipping,
     pay_method: values.pay,
     note: buildShippingSummary(values).join("\n"),
     tax_required: values.tax,
@@ -1116,6 +1167,7 @@ async function refreshMember() {
       line_user_id: MEMBER_UID
     });
     MEMBER_DATA = res?.ok ? res : null;
+    LAST_CONTACT = MEMBER_DATA?.last_contact || null;
   } catch (error) {
     console.error(error);
     MEMBER_DATA = null;

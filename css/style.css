@@ -901,6 +901,40 @@ body.sheet-open {
   text-align: right;
 }
 
+.order-summary-box {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.summary-grand {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.summary-grand strong {
+  color: var(--primary);
+}
+
+.summary-warn {
+  color: #c0392b;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .order-summary {
   width: 100%;
   min-height: 210px;
