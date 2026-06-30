@@ -937,6 +937,12 @@ async function initLiff() {
   if (!window.liff || !SHOP_CONFIG.liffId) return;
   try {
     await liff.init({ liffId: SHOP_CONFIG.liffId });
+  } catch (error) {
+    console.error("LIFF init error:", error);
+    showBanner(`LIFF init: ${error?.code || ""} ${error?.message || error}`.trim());
+    return;
+  }
+  try {
     if (liff.isLoggedIn?.()) {
       MEMBER_PROFILE = await liff.getProfile();
       MEMBER_UID = MEMBER_PROFILE.userId;
@@ -944,8 +950,8 @@ async function initLiff() {
       await refreshMember();
     }
   } catch (error) {
-    console.error("LIFF init error:", error);
-    toast(`LIFF error: ${error?.code || ""} ${error?.message || error}`.trim());
+    console.error("LIFF profile error:", error);
+    showBanner(`LIFF profile: ${error?.code || ""} ${error?.message || error}`.trim());
   }
 }
 
