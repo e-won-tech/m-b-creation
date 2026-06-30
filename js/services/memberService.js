@@ -55,6 +55,21 @@
     return data;
   }
 
+  async function getMemberSummary(payload) {
+    const supabase = core().requireSupabaseClient();
+    const { data, error } = await supabase.rpc("get_member", { payload });
+    if (error) throw core().publicError("โหลดข้อมูลสมาชิกไม่สำเร็จ", error);
+    return data;
+  }
+
+  async function joinMemberViaRpc(payload) {
+    const supabase = core().requireSupabaseClient();
+    const { data, error } = await supabase.rpc("join_member", { payload });
+    if (error) throw core().publicError("สมัครสมาชิกไม่สำเร็จ", error);
+    if (data && data.ok === false) throw new Error(data.error || "สมัครสมาชิกไม่สำเร็จ");
+    return data;
+  }
+
   function membersToCsv(members) {
     const columns = ["line_user_id", "display_name", "points", "total_spent", "tier", "created_at"];
     const rows = [columns.join(",")];
@@ -74,6 +89,8 @@
     loadMemberDetail,
     updateMemberTier,
     addMemberPoints,
+    getMemberSummary,
+    joinMemberViaRpc,
     membersToCsv
   };
 })();

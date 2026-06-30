@@ -1030,18 +1030,27 @@ async function openMember() {
 }
 
 async function refreshMember() {
-  if (!SHOP_CONFIG.apiBaseUrl || !MEMBER_UID) return;
+  if (!SHOP_CONFIG.useSupabase || !CURRENT_SHOP?.slug || !MEMBER_UID || !window.ShopServices?.memberService?.getMemberSummary) {
+    MEMBER_DATA = null;
+    return;
+  }
   try {
-    MEMBER_DATA = await fetchJson(`${SHOP_CONFIG.apiBaseUrl.replace(/\/$/, "")}/member?uid=${encodeURIComponent(MEMBER_UID)}`);
+    const res = await window.ShopServices.memberService.getMemberSummary({
+      shop_slug: CURRENT_SHOP.slug,
+      line_user_id: MEMBER_UID
+    });
+    MEMBER_DATA = res?.ok ? res : null;
   } catch (error) {
+    console.error(error);
     MEMBER_DATA = null;
   }
 }
 
 function renderMember() {
-  const profileName = MEMBER_DATA?.name || MEMBER_NAME || "ลูกค้า LINE";
+  const member = MEMBER_DATA?.member || null;
+  const profileName = member?.display_name || MEMBER_NAME || "ลูกค้า LINE";
   const avatar = MEMBER_PROFILE?.pictureUrl ? `<img src="${escapeAttr(MEMBER_PROFILE.pictureUrl)}" alt="">` : iconSvg("user", "avatar-icon");
-  const history = MEMBER_DATA?.history || demoHistory();
+  const history = MEMBER_DATA?.history?.length ? MEMBER_DATA.history : demoHistory();
 
   openSheet(`
     <h2 class="sheet-title" id="sheetTitle">สมาชิก</h2>
@@ -1052,7 +1061,7 @@ function renderMember() {
         <div class="pack">${MEMBER_UID ? "เชื่อมต่อ LINE แล้ว" : "เปิดผ่าน LINE เพื่อดึงข้อมูลสมาชิก"}</div>
       </div>
     </div>
-    ${MEMBER_DATA ? renderMemberStats(MEMBER_DATA) : renderJoinPrompt()}
+    ${member ? renderMemberStats(member) : renderJoinPrompt()}
     <div class="member-list">
       <strong>ประวัติสั่งซื้อ</strong>
       ${history.map(renderHistoryItem).join("")}
@@ -1068,9 +1077,9 @@ function renderMember() {
 function renderMemberStats(member) {
   return `
     <div class="stat-grid">
-      <div class="stat"><span>ระดับ</span><strong>${escapeHtml(member.level || "Member")}</strong></div>
+      <div class="stat"><span>ระดับ</span><strong>${escapeHtml(member.tier || "ทั่วไป")}</strong></div>
       <div class="stat"><span>คะแนน</span><strong>${escapeHtml(member.points || 0)}</strong></div>
-      <div class="stat"><span>ยอดซื้อ</span><strong>${money(Number(member.totalSpend || 0))}</strong></div>
+      <div class="stat"><span>ยอดซื้อ</span><strong>${money(Number(member.total_spent || 0))}</strong></div>
     </div>
   `;
 }
@@ -1084,16 +1093,23 @@ function renderJoinPrompt() {
 }
 
 async function joinMember() {
-  if (!SHOP_CONFIG.apiBaseUrl || !MEMBER_UID) return toast("เปิดผ่าน LINE และตั้งค่า API ก่อนสมัครสมาชิก");
+  if (!MEMBER_UID) return toast("กรุณาเปิดผ่านแอป LINE เพื่อสมัครสมาชิก");
+  if (!window.ShopServices?.memberService?.joinMemberViaRpc || !CURRENT_SHOP?.slug) {
+    return toast("ระบบสมาชิกยังไม่พร้อมใช้งาน");
+  }
   try {
-    MEMBER_DATA = await fetchJson(`${SHOP_CONFIG.apiBaseUrl.replace(/\/$/, "")}/member/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: MEMBER_UID, name: MEMBER_NAME })
+    await window.ShopServices.memberService.joinMemberViaRpc({
+      shop_slug: CURRENT_SHOP.slug,
+      line_user_id: MEMBER_UID,
+      display_name: MEMBER_NAME,
+      picture_url: MEMBER_PROFILE?.pictureUrl || ""
     });
+    await refreshMember();
+    toast("สมัครสมาชิกสำเร็จ");
     renderMember();
   } catch (error) {
-    toast("สมัครสมาชิกไม่สำเร็จ");
+    console.error(error);
+    toast(error.message || "สมัครสมาชิกไม่สำเร็จ");
   }
 }
 
