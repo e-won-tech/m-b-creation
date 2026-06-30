@@ -913,53 +913,45 @@ function buildOrderFlex(values, result) {
     ]
   }));
 
+  const bodyContents = [
+    { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", weight: "bold", size: "lg", wrap: true },
+    { type: "text", text: `เลขออเดอร์ ${orderNo || "-"}`, size: "sm", color: "#888888" },
+    { type: "separator", margin: "md" }
+  ];
+  itemRows.forEach((row) => bodyContents.push(row));
+  bodyContents.push({ type: "separator", margin: "md" });
+  bodyContents.push({
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      { type: "text", text: "ยอดรวม", weight: "bold" },
+      { type: "text", text: money(total), weight: "bold", align: "end", color: primary }
+    ]
+  });
+  if (values.customer) bodyContents.push({ type: "text", text: `ผู้สั่ง: ${values.customer}`, size: "xs", color: "#888888", wrap: true });
+  if (values.shipping) bodyContents.push({ type: "text", text: `จัดส่ง: ${values.shipping}`, size: "xs", color: "#888888", wrap: true });
+
   return {
     type: "flex",
     altText: `คำสั่งซื้อ ${orderNo} ยอดรวม ${money(total)}`,
     contents: {
       type: "bubble",
-      header: {
-        type: "box",
-        layout: "vertical",
-        backgroundColor: primary,
-        paddingAll: "16px",
-        contents: [
-          { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", color: "#FFFFFF", weight: "bold", size: "lg", wrap: true },
-          { type: "text", text: `เลขออเดอร์ ${orderNo || "-"}`, color: "#EAF6EC", size: "sm", margin: "sm" }
-        ]
-      },
       body: {
         type: "box",
         layout: "vertical",
         spacing: "sm",
-        contents: [
-          ...itemRows,
-          { type: "separator", margin: "md" },
-          {
-            type: "box",
-            layout: "horizontal",
-            margin: "md",
-            contents: [
-              { type: "text", text: "ยอดรวม", size: "md", weight: "bold", color: "#111111" },
-              { type: "text", text: money(total), size: "md", weight: "bold", color: primary, align: "end" }
-            ]
-          },
-          ...(values.customer ? [{ type: "text", text: `ผู้สั่ง: ${values.customer}`, size: "xs", color: "#888888", margin: "md", wrap: true }] : []),
-          ...(values.shipping ? [{ type: "text", text: `จัดส่ง: ${values.shipping}`, size: "xs", color: "#888888", wrap: true }] : [])
-        ]
+        contents: bodyContents
       },
       footer: {
         type: "box",
         layout: "vertical",
-        spacing: "sm",
         contents: [
           {
             type: "button",
             style: "primary",
             color: primary,
             action: { type: "message", label: "แจ้งชำระเงิน", text: payText }
-          },
-          { type: "text", text: "กดเพื่อรับ QR และเลขบัญชีในแชท", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
+          }
         ]
       }
     }
