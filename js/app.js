@@ -902,7 +902,7 @@ function buildOrderFlex(values, result) {
   const primary = theme.primary || "#3B9344";
   const total = Number(result?.total ?? cartTotal());
   const orderNo = result?.order_no || "";
-  const payUri = `https://liff.line.me/${SHOP_CONFIG.liffId}?view=payment&order=${encodeURIComponent(orderNo)}&amount=${total}`;
+  const payText = `แจ้งชำระเงิน ออเดอร์ ${orderNo} ยอด ${money(total)}`;
 
   const itemRows = values.items.map((item) => ({
     type: "box",
@@ -957,9 +957,9 @@ function buildOrderFlex(values, result) {
             type: "button",
             style: "primary",
             color: primary,
-            action: { type: "uri", label: "💳 ชำระเงิน", uri: payUri }
+            action: { type: "message", label: "💳 แจ้งชำระเงิน", text: payText }
           },
-          { type: "text", text: "กดเพื่อดู QR และเลขบัญชี", size: "xxs", color: "#aaaaaa", align: "center" }
+          { type: "text", text: "กดเพื่อรับ QR และเลขบัญชีในแชท", size: "xxs", color: "#aaaaaa", align: "center", wrap: true }
         ]
       }
     }
