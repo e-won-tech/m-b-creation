@@ -925,7 +925,7 @@ function buildOrderFlex(values, result) {
         paddingAll: "16px",
         contents: [
           { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", color: "#FFFFFF", weight: "bold", size: "lg", wrap: true },
-          { type: "text", text: `เลขออเดอร์ ${orderNo}`, color: "#FFFFFFCC", size: "sm", margin: "sm" }
+          { type: "text", text: `เลขออเดอร์ ${orderNo || "-"}`, color: "#EAF6EC", size: "sm", margin: "sm" }
         ]
       },
       body: {
@@ -957,9 +957,9 @@ function buildOrderFlex(values, result) {
             type: "button",
             style: "primary",
             color: primary,
-            action: { type: "message", label: "💳 แจ้งชำระเงิน", text: payText }
+            action: { type: "message", label: "แจ้งชำระเงิน", text: payText }
           },
-          { type: "text", text: "กดเพื่อรับ QR และเลขบัญชีในแชท", size: "xxs", color: "#aaaaaa", align: "center", wrap: true }
+          { type: "text", text: "กดเพื่อรับ QR และเลขบัญชีในแชท", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
         ]
       }
     }
@@ -968,20 +968,28 @@ function buildOrderFlex(values, result) {
 
 async function sendOrderMessage(message, flexMessage = null) {
   if (canSendLiffMessage()) {
-    try {
-      await liff.sendMessages([flexMessage || { type: "text", text: message }]);
-      Object.keys(cart).forEach((key) => delete cart[key]);
-      updateBadge();
-      openSheet(`
-        <h2 class="sheet-title" id="sheetTitle">ส่งออเดอร์แล้ว</h2>
-        <div class="empty-state">ระบบส่งคำสั่งซื้อเข้าแชท LINE เรียบร้อย</div>
-      `);
-      setTimeout(() => window.liff?.closeWindow?.(), 900);
-      return;
-    } catch (error) {
-      console.error("LIFF sendMessages error:", error);
-      showBanner(`ส่งเข้า LINE ไม่สำเร็จ: ${error?.code || ""} ${error?.message || error}`.trim());
+    const attempts = [];
+    if (flexMessage) attempts.push(flexMessage);
+    attempts.push({ type: "text", text: message });
+
+    let lastError = null;
+    for (const msg of attempts) {
+      try {
+        await liff.sendMessages([msg]);
+        Object.keys(cart).forEach((key) => delete cart[key]);
+        updateBadge();
+        openSheet(`
+          <h2 class="sheet-title" id="sheetTitle">ส่งออเดอร์แล้ว</h2>
+          <div class="empty-state">ระบบส่งคำสั่งซื้อเข้าแชท LINE เรียบร้อย</div>
+        `);
+        setTimeout(() => window.liff?.closeWindow?.(), 900);
+        return;
+      } catch (error) {
+        console.error("LIFF sendMessages error:", error);
+        lastError = error;
+      }
     }
+    showBanner(`ส่งเข้า LINE ไม่สำเร็จ: ${lastError?.code || ""} ${lastError?.message || lastError}`.trim());
   }
 
   openFallbackMessage(message);
