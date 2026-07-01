@@ -1030,13 +1030,40 @@ function buildOrderFlex(values, result) {
         type: "box",
         layout: "vertical",
         spacing: "sm",
-        contents: [
-          { type: "button", style: "primary", color: primary, action: { type: "uri", label: "💳 ชำระเงิน", uri: payUri } },
-          { type: "text", text: "กดเพื่อดู QR และเลขบัญชี", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
-        ]
+        contents: buildOrderFlexFooter(primary, payUri, orderNo)
       }
     }
   };
+}
+
+// ปุ่มในการ์ดออเดอร์: ชำระเงิน + (ถ้าตั้ง OA id) ปุ่มกดส่งข้อความให้ OA ตอบกลับอัตโนมัติ
+function buildOrderFlexFooter(primary, payUri, orderNo) {
+  const contents = [
+    { type: "button", style: "primary", color: primary, action: { type: "uri", label: "💳 ชำระเงิน", uri: payUri } },
+    { type: "text", text: "กดเพื่อดู QR และเลขบัญชี", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
+  ];
+
+  const oaId = SHOP_CONFIG.lineOaId;
+  if (oaId) {
+    const ref = orderNo ? ` ออเดอร์ ${orderNo}` : "";
+    const oaMsgUri = (text) => `https://line.me/R/oaMessage/${encodeURIComponent(oaId)}/?${encodeURIComponent(text)}`;
+    contents.push({ type: "separator", margin: "md" });
+    contents.push({
+      type: "button",
+      style: "secondary",
+      height: "sm",
+      margin: "sm",
+      action: { type: "uri", label: "✅ แจ้งชำระเงินแล้ว", uri: oaMsgUri(`แจ้งชำระเงิน${ref}`) }
+    });
+    contents.push({
+      type: "button",
+      style: "secondary",
+      height: "sm",
+      action: { type: "uri", label: "📦 สอบถามสถานะ", uri: oaMsgUri(`เช็คสถานะ${ref}`) }
+    });
+  }
+
+  return contents;
 }
 
 async function sendOrderMessage(message, flexMessage = null) {

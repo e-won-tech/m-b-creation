@@ -4,6 +4,8 @@ const SHOP_CONFIG = {
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4",
   shopSlug: "demo-shop",
   liffId: "2010557164-GdxhSolO",
+  // Basic ID ของ LINE OA (ขึ้นต้นด้วย @ เช่น "@mbcreation") ใช้ทำปุ่มกดส่งข้อความอัตโนมัติในการ์ดออเดอร์
+  lineOaId: "",
   shopName: "M&B CREATION",
   shopTagline: "สินค้าคุณภาพ พร้อมบริการผ่าน LINE",
   logoUrl: "assets/logo.png",
