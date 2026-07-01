@@ -6,7 +6,7 @@
     const supabase = core().requireSupabaseClient();
     const { data, error } = await supabase
       .from("shops")
-      .select("id, slug, shop_name, tagline, logo_url, logo_public_id, liff_id, theme, contact_line_url, contact_phone, is_active, payment_bank, payment_account_no, payment_account_name, payment_image_url, payment_image_public_id, payment_note")
+      .select("id, slug, shop_name, tagline, logo_url, logo_public_id, liff_id, theme, contact_line_url, contact_phone, is_active, payment_bank, payment_account_no, payment_account_name, payment_image_url, payment_image_public_id, payment_note, shipping_rates")
       .eq("slug", slug)
       .eq("is_active", true)
       .single();
@@ -19,7 +19,7 @@
     const supabase = core().requireSupabaseClient();
     const { data: access, error } = await supabase
       .from("shop_admins")
-      .select("role, shops(id, slug, shop_name, tagline, logo_url, liff_id, theme, is_active, payment_bank, payment_account_no, payment_account_name, payment_image_url, payment_image_public_id, payment_note)")
+      .select("role, shops(id, slug, shop_name, tagline, logo_url, liff_id, theme, is_active, payment_bank, payment_account_no, payment_account_name, payment_image_url, payment_image_public_id, payment_note, shipping_rates)")
       .order("created_at", { ascending: false });
 
     if (error) throw core().publicError("บัญชีนี้ไม่มีสิทธิ์จัดการร้าน", error);
@@ -28,7 +28,7 @@
 
   async function updateShopSettings(shopId, payload) {
     const supabase = core().requireSupabaseClient();
-    const allowed = ["shop_name", "tagline", "logo_url", "logo_public_id", "liff_id", "theme", "contact_line_url", "contact_phone", "is_active", "payment_bank", "payment_account_no", "payment_account_name", "payment_image_url", "payment_image_public_id", "payment_note"];
+    const allowed = ["shop_name", "tagline", "logo_url", "logo_public_id", "liff_id", "theme", "contact_line_url", "contact_phone", "is_active", "payment_bank", "payment_account_no", "payment_account_name", "payment_image_url", "payment_image_public_id", "payment_note", "shipping_rates"];
     const clean = Object.fromEntries(Object.entries(payload || {}).filter(([key]) => allowed.includes(key)));
     const { data, error } = await supabase.from("shops").update(clean).eq("id", shopId).select().single();
     if (error) throw core().publicError("บันทึกข้อมูลร้านไม่สำเร็จ", error);

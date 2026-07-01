@@ -243,6 +243,7 @@ function normalizeProducts(products = []) {
       desc: item.desc || item.description || "",
       usage: item.usage || item.usage_rate || "",
       isSack: toBool(item.isSack ?? item.is_sack ?? false),
+      weightKg: Number(item.weightKg ?? item.weight_kg ?? 1) || 1,
       stock: item.stock === null || item.stock === undefined || item.stock === "" ? null : Number(item.stock),
       featured: toBool(item.featured),
       active: item.active === undefined ? true : toBool(item.active)
@@ -540,12 +541,39 @@ function onShippingChange(shipping) {
   updateOrderSummary(shipping);
 }
 
+const DEFAULT_SHIPPING_RATES = {
+  brackets: [
+    { max: 1, fee: 40 },
+    { max: 3, fee: 55 },
+    { max: 5, fee: 70 },
+    { max: 10, fee: 110 },
+    { max: 15, fee: 180 },
+    { max: 20, fee: 250 },
+    { max: 25, fee: 300 }
+  ],
+  over_per_kg: 15
+};
+
+// ค่าส่ง Flash ตามน้ำหนักรวม (ตารางเรตจากร้าน หรือค่าเริ่มต้น)
+function flashFeeByWeight(totalWeight) {
+  const rates = CURRENT_SHOP?.shipping_rates || DEFAULT_SHIPPING_RATES;
+  const brackets = (rates.brackets || []).slice().sort((a, b) => Number(a.max) - Number(b.max));
+  const hit = brackets.find((b) => totalWeight <= Number(b.max));
+  if (hit) return Number(hit.fee);
+  if (brackets.length) {
+    const last = brackets[brackets.length - 1];
+    const over = Number(rates.over_per_kg ?? 15);
+    return Number(last.fee) + Math.ceil(Math.max(0, totalWeight - Number(last.max))) * over;
+  }
+  return 60;
+}
+
 // คำนวณค่าส่งตามกฎ (ฝั่ง client เพื่อแสดงผล/เตือนล่วงหน้า — ฝั่ง RPC คิดซ้ำเป็นค่าจริง)
 function computeShipping(shipping, items = cartItems()) {
-  const totalQty = items.reduce((sum, item) => sum + item.qty, 0);
   const sackQty = items.filter((item) => item.isSack).reduce((sum, item) => sum + item.qty, 0);
-  const nonSackQty = totalQty - sackQty;
+  const nonSackQty = items.reduce((sum, item) => sum + item.qty, 0) - sackQty;
   const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const totalWeight = items.reduce((sum, item) => sum + (Number(item.weightKg) || 1) * item.qty, 0);
 
   if (String(shipping).startsWith("จัดส่งขนส่งเอกชน")) {
     if (nonSackQty > 0) return { fee: 0, error: "ขนส่งเอกชนรับเฉพาะสินค้ากระสอบเท่านั้น" };
@@ -556,7 +584,7 @@ function computeShipping(shipping, items = cartItems()) {
     if (subtotal < 5000) return { fee: 0, error: `รับสินค้าเองสั่งขั้นต่ำ 5,000 บาท (ตอนนี้ ${money(subtotal)})` };
     return { fee: 0, error: null };
   }
-  return { fee: 60 + Math.max(0, totalQty - 1) * 10, error: null };
+  return { fee: flashFeeByWeight(totalWeight), error: null };
 }
 
 function updateOrderSummary(shipping = document.querySelector('input[name="shipping"]:checked')?.value) {

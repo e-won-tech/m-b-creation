@@ -32,7 +32,9 @@
       "Bash(git commit -m 'Add payment settings tab in admin \\(bank/account/QR image\\) *)",
       "Bash(git commit -m 'Send order confirmation as Flex card with pay button \\(free via liff.sendMessages\\) *)",
       "Bash(git commit -m 'Change Flex pay button to message action with per-order amount \\(free auto-reply flow\\) *)",
-      "Bash(git commit -m 'Harden order Flex: solid colors, plain button label, text fallback if flex rejected *)"
+      "Bash(git commit -m 'Harden order Flex: solid colors, plain button label, text fallback if flex rejected *)",
+      "Bash(git commit -m 'Restore full order Flex card with URI pay button \\(message action is not allowed in user-sent flex\\) *)",
+      "Bash(git commit -m 'Weight-based Flash shipping: product weight, shop rate table, RPC + client calc *)"
     ]
   }
 }

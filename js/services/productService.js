@@ -2,8 +2,8 @@
   window.ShopServices = window.ShopServices || {};
   const core = () => window.ShopServices.core;
 
-  const PRODUCT_COLUMNS = "id, shop_id, category_id, category_name, name, pack, price, description, usage_rate, icon_name, image_url, image_public_id, image2_url, image2_public_id, stock, is_sack, featured, active, sort_order, created_at, updated_at";
-  const CSV_COLUMNS = ["category_name", "name", "pack", "price", "description", "usage_rate", "icon_name", "image_url", "image2_url", "stock", "is_sack", "featured", "active", "sort_order"];
+  const PRODUCT_COLUMNS = "id, shop_id, category_id, category_name, name, pack, price, description, usage_rate, icon_name, image_url, image_public_id, image2_url, image2_public_id, stock, is_sack, weight_kg, featured, active, sort_order, created_at, updated_at";
+  const CSV_COLUMNS = ["category_name", "name", "pack", "price", "description", "usage_rate", "icon_name", "image_url", "image2_url", "stock", "is_sack", "weight_kg", "featured", "active", "sort_order"];
 
   function validateProductPayload(payload, { partial = false } = {}) {
     const clean = { ...payload };
@@ -17,6 +17,7 @@
     if (clean.active !== undefined) clean.active = core().normalizeBool(clean.active);
     if (clean.featured !== undefined) clean.featured = core().normalizeBool(clean.featured);
     if (clean.is_sack !== undefined) clean.is_sack = core().normalizeBool(clean.is_sack);
+    if (clean.weight_kg !== undefined) clean.weight_kg = core().parseNumber(clean.weight_kg);
     if (clean.sort_order !== undefined) clean.sort_order = Number.parseInt(clean.sort_order || 0, 10);
     if (clean.icon_name === undefined) clean.icon_name = "package";
     return clean;

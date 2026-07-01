@@ -1,4 +1,17 @@
 (function () {
+  const DEFAULT_RATES = {
+    brackets: [
+      { max: 1, fee: 40 },
+      { max: 3, fee: 55 },
+      { max: 5, fee: 70 },
+      { max: 10, fee: 110 },
+      { max: 15, fee: 180 },
+      { max: 20, fee: 250 },
+      { max: 25, fee: 300 }
+    ],
+    over_per_kg: 15
+  };
+
   const state = {
     user: null,
     access: [],
@@ -230,6 +243,11 @@
             <textarea name="payment_note" placeholder="เช่น โอนแล้วแจ้งสลิปในแชท">${escapeHtml(shop.payment_note || "")}</textarea>
           </label>
           ${renderImageField("payment", "รูป QR / พร้อมเพย์", shop.payment_image_url, shop.payment_image_public_id)}
+          <label class="field span-2">
+            <span>ตารางค่าส่ง Flash (ตามน้ำหนักรวม) — JSON</span>
+            <textarea name="shipping_rates" rows="10" spellcheck="false">${escapeHtml(JSON.stringify(shop.shipping_rates || DEFAULT_RATES, null, 2))}</textarea>
+          </label>
+          <p class="admin-muted span-2">brackets เรียงจากน้อยไปมาก: ถ้าน้ำหนักรวม ≤ max ใช้ fee นั้น • เกิน max สูงสุด = fee สูงสุด + (กก.ส่วนเกิน)×over_per_kg</p>
         </div>
         <button class="primary-btn" type="submit">บันทึกการชำระเงิน</button>
       </form>
@@ -258,13 +276,22 @@
         const uploaded = await window.ShopServices.uploadService.uploadPaymentImage(file, state.shop.id);
         image = { url: uploaded.url, publicId: uploaded.publicId };
       }
+      let shippingRates;
+      try {
+        shippingRates = JSON.parse(form.get("shipping_rates") || "{}");
+      } catch (parseError) {
+        toast("ตารางค่าส่ง JSON ไม่ถูกต้อง");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalLabel; }
+        return;
+      }
       const payload = {
         payment_bank: (form.get("payment_bank") || "").trim(),
         payment_account_no: (form.get("payment_account_no") || "").trim(),
         payment_account_name: (form.get("payment_account_name") || "").trim(),
         payment_note: (form.get("payment_note") || "").trim(),
         payment_image_url: image.url,
-        payment_image_public_id: image.publicId
+        payment_image_public_id: image.publicId,
+        shipping_rates: shippingRates
       };
       const updated = await window.ShopServices.shopService.updateShopSettings(state.shop.id, payload);
       state.shop = { ...state.shop, ...updated };
@@ -318,6 +345,10 @@
           <label class="field">
             <span>สต็อก</span>
             <input name="stock" type="number" min="0" step="1" value="${escapeAttr(editing.stock ?? "")}" placeholder="ว่าง = ไม่จำกัด">
+          </label>
+          <label class="field">
+            <span>น้ำหนัก (กก.) ใช้คิดค่าส่ง Flash</span>
+            <input name="weight_kg" type="number" min="0" step="0.1" value="${escapeAttr(editing.weight_kg ?? 1)}" placeholder="เช่น 1 หรือ 20 (กระสอบ)">
           </label>
           <label class="field span-2">
             <span>รายละเอียด</span>
@@ -502,6 +533,7 @@
         image2_url: image2.url,
         image2_public_id: image2.publicId,
         is_sack: form.has("is_sack"),
+        weight_kg: form.get("weight_kg") || 1,
         featured: form.has("featured"),
         active: form.has("active")
       };
