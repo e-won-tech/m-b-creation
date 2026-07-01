@@ -949,31 +949,62 @@ async function saveMemberOrder(values) {
 }
 
 function buildOrderFlex(values, result) {
-  const theme = (window.SHOP_CONFIG?.theme) || (window.THEME_PRESETS?.[window.SHOP_CONFIG?.themePreset]) || {};
-  const primary = theme.primary || "#3B9344";
+  const primary = "#3B9344";
   const total = Number(result?.total ?? cartTotal());
   const orderNo = result?.order_no || "";
-  const payText = `แจ้งชำระเงิน ออเดอร์ ${orderNo} ยอด ${money(total)}`;
+  const payUri = `https://liff.line.me/${SHOP_CONFIG.liffId}?view=payment&order=${encodeURIComponent(orderNo)}&amount=${total}`;
 
-  // ทดสอบ: body เปลือย + ปุ่ม minimal (ไม่มี style/color)
+  const itemRows = values.items.map((item) => ({
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      { type: "text", text: `${item.name} x${item.qty}`, size: "sm", color: "#444444", wrap: true, flex: 5 },
+      { type: "text", text: money(item.price * item.qty), size: "sm", color: "#111111", align: "end", flex: 3 }
+    ]
+  }));
+
+  const bodyContents = [...itemRows];
+  bodyContents.push({ type: "separator", margin: "md" });
+  bodyContents.push({
+    type: "box",
+    layout: "horizontal",
+    margin: "md",
+    contents: [
+      { type: "text", text: "ยอดรวม", weight: "bold", color: "#111111" },
+      { type: "text", text: money(total), weight: "bold", color: primary, align: "end" }
+    ]
+  });
+  if (values.customer) bodyContents.push({ type: "text", text: `ผู้สั่ง: ${values.customer}`, size: "xs", color: "#888888", margin: "md", wrap: true });
+  if (values.shipping) bodyContents.push({ type: "text", text: `จัดส่ง: ${values.shipping}`, size: "xs", color: "#888888", wrap: true });
+
   return {
     type: "flex",
-    altText: `คำสั่งซื้อ ${orderNo || "-"}`,
+    altText: `คำสั่งซื้อ ${orderNo} ยอดรวม ${money(total)}`,
     contents: {
       type: "bubble",
+      header: {
+        type: "box",
+        layout: "vertical",
+        backgroundColor: primary,
+        paddingAll: "16px",
+        contents: [
+          { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", color: "#FFFFFF", weight: "bold", size: "lg", wrap: true },
+          { type: "text", text: `เลขออเดอร์ ${orderNo || "-"}`, color: "#EAF6EC", size: "sm", margin: "sm" }
+        ]
+      },
       body: {
         type: "box",
         layout: "vertical",
-        contents: [
-          { type: "text", text: `คำสั่งซื้อ ${orderNo || "-"}`, weight: "bold", wrap: true },
-          { type: "text", text: `ยอดรวม ${money(total)}`, wrap: true }
-        ]
+        spacing: "sm",
+        contents: bodyContents
       },
       footer: {
         type: "box",
         layout: "vertical",
+        spacing: "sm",
         contents: [
-          { type: "button", action: { type: "message", label: "แจ้งชำระเงิน", text: payText } }
+          { type: "button", style: "primary", color: primary, action: { type: "uri", label: "💳 ชำระเงิน", uri: payUri } },
+          { type: "text", text: "กดเพื่อดู QR และเลขบัญชี", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
         ]
       }
     }
