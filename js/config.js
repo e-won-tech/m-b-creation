@@ -5,7 +5,7 @@ const SHOP_CONFIG = {
   shopSlug: "demo-shop",
   liffId: "2010557164-GdxhSolO",
   // Basic ID ของ LINE OA (ขึ้นต้นด้วย @ เช่น "@mbcreation") ใช้ทำปุ่มกดส่งข้อความอัตโนมัติในการ์ดออเดอร์
-  lineOaId: "",
+  lineOaId: "@029tkbub",
   shopName: "M&B CREATION",
   shopTagline: "สินค้าคุณภาพ พร้อมบริการผ่าน LINE",
   logoUrl: "assets/logo.png",
