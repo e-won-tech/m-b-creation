@@ -656,7 +656,12 @@
                   </select>
                 </td>
                 <td>${formatDate(order.created_at)}</td>
-                <td><button class="mini-btn danger" type="button" data-delete-order="${escapeAttr(order.id)}">ลบ</button></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="mini-btn" type="button" data-notify-order="${escapeAttr(order.id)}">แจ้งลูกค้า</button>
+                    <button class="mini-btn danger" type="button" data-delete-order="${escapeAttr(order.id)}">ลบ</button>
+                  </div>
+                </td>
               </tr>
             `).join("")}
           </tbody>
@@ -665,6 +670,128 @@
     `;
     document.querySelectorAll("[data-order-status]").forEach((select) => select.addEventListener("change", () => updateOrderStatus(select.dataset.orderStatus, select.value)));
     document.querySelectorAll("[data-delete-order]").forEach((button) => button.addEventListener("click", () => removeOrder(button.dataset.deleteOrder)));
+    document.querySelectorAll("[data-notify-order]").forEach((button) => button.addEventListener("click", () => openNotifyModal(button.dataset.notifyOrder)));
+  }
+
+  const NOTIFY_TEMPLATES = [
+    { key: "paid", label: "ยืนยันชำระเงิน", needsTracking: false },
+    { key: "packing", label: "กำลังแพ็ก", needsTracking: false },
+    { key: "shipped", label: "แจ้งเลขพัสดุ", needsTracking: true },
+    { key: "pickup", label: "นัดรับสินค้า", needsTracking: false },
+    { key: "remind", label: "ทวงชำระเงิน", needsTracking: false }
+  ];
+
+  function buildNotifyMessage(key, order, extra) {
+    const shopName = state.shop?.name || "ทางร้าน";
+    const orderNo = order.order_no || order.id;
+    const total = money(order.total);
+    const carrier = (extra.carrier || "").trim() || "-";
+    const tracking = (extra.tracking || "").trim() || "-";
+    switch (key) {
+      case "paid":
+        return `สวัสดีค่ะ 🙏\nร้าน ${shopName} ได้รับการชำระเงินสำหรับออเดอร์ ${orderNo} เรียบร้อยแล้วค่ะ\nยอดชำระ ${total}\nร้านกำลังจัดเตรียมสินค้าให้นะคะ ขอบคุณที่อุดหนุนค่ะ`;
+      case "packing":
+        return `ออเดอร์ ${orderNo} ทางร้านกำลังแพ็กสินค้าอยู่นะคะ จะรีบจัดส่งให้เร็วที่สุดค่ะ 🙏`;
+      case "shipped":
+        return `📦 ออเดอร์ ${orderNo} จัดส่งเรียบร้อยแล้วค่ะ\nขนส่ง: ${carrier}\nเลขพัสดุ: ${tracking}\nสามารถติดตามสถานะพัสดุได้เลยนะคะ ขอบคุณที่อุดหนุนค่ะ 🙏`;
+      case "pickup":
+        return `ออเดอร์ ${orderNo} เตรียมพร้อมให้เข้ารับแล้วนะคะ 🙏\nรบกวนมารับตามวันและเวลาที่นัดไว้ค่ะ หากมีการเปลี่ยนแปลงแจ้งทางร้านได้เลยนะคะ`;
+      case "remind":
+        return `แจ้งเตือนนะคะ 🙏\nออเดอร์ ${orderNo} ยอด ${total} ยังไม่ได้รับการชำระเงินค่ะ\nรบกวนโอนและส่งสลิปในแชทนี้เพื่อยืนยันออเดอร์ด้วยนะคะ`;
+      default:
+        return "";
+    }
+  }
+
+  function openNotifyModal(orderId) {
+    const order = state.orders.find((item) => item.id === orderId);
+    if (!order) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "notify-overlay";
+    overlay.innerHTML = `
+      <div class="notify-modal" role="dialog" aria-modal="true">
+        <div class="notify-head">
+          <div>
+            <strong>แจ้งลูกค้า</strong>
+            <div class="admin-muted">ออเดอร์ ${escapeHtml(order.order_no || order.id)} · ${escapeHtml(order.customer_name || order.line_display_name || "-")}</div>
+          </div>
+          <button class="icon-close" type="button" data-notify-close aria-label="ปิด">✕</button>
+        </div>
+        <div class="notify-templates">
+          ${NOTIFY_TEMPLATES.map((tpl, index) => `<button class="chip-btn ${index === 0 ? "is-active" : ""}" type="button" data-tpl="${tpl.key}">${tpl.label}</button>`).join("")}
+        </div>
+        <div class="notify-tracking is-hidden" data-tracking-fields>
+          <label>ขนส่ง<input type="text" data-carrier placeholder="เช่น Flash, Kerry, ไปรษณีย์"></label>
+          <label>เลขพัสดุ<input type="text" data-tracking placeholder="กรอกเลขพัสดุ"></label>
+        </div>
+        <textarea class="notify-text" data-notify-text rows="7"></textarea>
+        <p class="upload-hint">แก้ไขข้อความได้ก่อนคัดลอก แล้วนำไปวางในแชท LINE ของลูกค้า</p>
+        <div class="notify-actions">
+          <button class="upload-btn" type="button" data-notify-copy>คัดลอกข้อความ</button>
+          <button class="mini-btn" type="button" data-notify-close>ปิด</button>
+        </div>
+      </div>
+    `;
+    document.body.append(overlay);
+
+    let current = NOTIFY_TEMPLATES[0].key;
+    const textEl = overlay.querySelector("[data-notify-text]");
+    const trackWrap = overlay.querySelector("[data-tracking-fields]");
+    const carrierEl = overlay.querySelector("[data-carrier]");
+    const trackEl = overlay.querySelector("[data-tracking]");
+
+    function regenerate() {
+      const tpl = NOTIFY_TEMPLATES.find((item) => item.key === current);
+      trackWrap.classList.toggle("is-hidden", !tpl.needsTracking);
+      textEl.value = buildNotifyMessage(current, order, { carrier: carrierEl.value, tracking: trackEl.value });
+    }
+    regenerate();
+
+    overlay.querySelectorAll("[data-tpl]").forEach((btn) => btn.addEventListener("click", () => {
+      current = btn.dataset.tpl;
+      overlay.querySelectorAll("[data-tpl]").forEach((node) => node.classList.toggle("is-active", node === btn));
+      regenerate();
+    }));
+    carrierEl.addEventListener("input", regenerate);
+    trackEl.addEventListener("input", regenerate);
+
+    overlay.querySelector("[data-notify-copy]").addEventListener("click", async () => {
+      const ok = await copyAdminText(textEl.value);
+      toast(ok ? "คัดลอกข้อความแล้ว นำไปวางในแชทได้เลย" : "คัดลอกไม่สำเร็จ ลองเลือกข้อความแล้วคัดลอกเอง");
+    });
+    overlay.querySelectorAll("[data-notify-close]").forEach((btn) => btn.addEventListener("click", () => overlay.remove()));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) overlay.remove();
+    });
+  }
+
+  async function copyAdminText(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (error) {
+      // fall through to legacy method
+    }
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.opacity = "0";
+      document.body.append(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      textarea.remove();
+      return ok;
+    } catch (error) {
+      return false;
+    }
   }
 
   async function updateOrderStatus(orderId, status) {
