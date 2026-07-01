@@ -1354,6 +1354,10 @@ function openPayment(orderNo, amount) {
       ${shop.payment_account_name ? `<div class="pay-row"><span>ชื่อบัญชี</span><strong>${escapeHtml(shop.payment_account_name)}</strong></div>` : ""}
     </div>
     ${shop.payment_note ? `<p class="form-note">${escapeHtml(shop.payment_note)}</p>` : ""}
+    <div class="pay-steps">
+      <strong>หลังโอนเงินแล้ว</strong>
+      <p>กรุณาส่ง<b>สลิปการโอน</b>เข้ามาในแชท LINE ของร้าน เพื่อให้ร้านตรวจสอบและยืนยันออเดอร์ของคุณ</p>
+    </div>
     <div class="action-stack">
       ${shop.payment_account_no ? `<button class="primary-btn" type="button" id="copyAcct">คัดลอกเลขบัญชี</button>` : ""}
       <button class="ghost-btn" type="button" data-close-sheet>ปิด</button>

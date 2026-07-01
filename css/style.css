@@ -903,6 +903,28 @@ body.sheet-open {
   -webkit-user-select: text;
 }
 
+.pay-steps {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--primary);
+  border-radius: 14px;
+  background: var(--soft);
+}
+
+.pay-steps strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--primary-dark);
+  font-size: 14px;
+}
+
+.pay-steps p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .order-summary-box {
   display: grid;
   gap: 6px;

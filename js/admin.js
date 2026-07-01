@@ -621,7 +621,16 @@
       els.ordersView.innerHTML = `<div class="admin-empty">ยังไม่มีรายการขาย</div>`;
       return;
     }
-    const statuses = ["pending", "confirmed", "waiting_payment", "paid", "packing", "shipped", "completed", "cancelled"];
+    const statuses = [
+      ["pending", "รอดำเนินการ"],
+      ["waiting_payment", "รอชำระเงิน"],
+      ["paid", "แจ้งชำระแล้ว / รอตรวจสอบ"],
+      ["confirmed", "ยืนยันการชำระเงิน"],
+      ["packing", "กำลังแพ็กสินค้า"],
+      ["shipped", "จัดส่งแล้ว"],
+      ["completed", "เสร็จสิ้น"],
+      ["cancelled", "ยกเลิก"]
+    ];
     els.ordersView.innerHTML = `
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -643,7 +652,7 @@
                 <td>${money(order.total)}</td>
                 <td>
                   <select data-order-status="${escapeAttr(order.id)}">
-                    ${statuses.map((status) => `<option value="${status}" ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}
+                    ${statuses.map(([value, label]) => `<option value="${value}" ${order.status === value ? "selected" : ""}>${label}</option>`).join("")}
                   </select>
                 </td>
                 <td>${formatDate(order.created_at)}</td>
