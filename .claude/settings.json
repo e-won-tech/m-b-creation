@@ -34,7 +34,11 @@
       "Bash(git commit -m 'Change Flex pay button to message action with per-order amount \\(free auto-reply flow\\) *)",
       "Bash(git commit -m 'Harden order Flex: solid colors, plain button label, text fallback if flex rejected *)",
       "Bash(git commit -m 'Restore full order Flex card with URI pay button \\(message action is not allowed in user-sent flex\\) *)",
-      "Bash(git commit -m 'Weight-based Flash shipping: product weight, shop rate table, RPC + client calc *)"
+      "Bash(git commit -m 'Weight-based Flash shipping: product weight, shop rate table, RPC + client calc *)",
+      "Bash(curl -s 'https://ugpwksluhrflbmwoxqmt.supabase.co/rest/v1/products?select=id,name,weight_kg,is_sack,price,stock&limit=20' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4')",
+      "Bash(curl -s 'https://ugpwksluhrflbmwoxqmt.supabase.co/rest/v1/shops?slug=eq.demo-shop&select=shipping_rates' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncHdrc2x1aHJmbGJtd294cW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3ODMzMzMsImV4cCI6MjA5ODM1OTMzM30.BmN_zRt7z7c1jJYEUWbAaDjfmwPpAu4jitLmL6Lf6b4')",
+      "Bash(node --check js/services/orderService.js)",
+      "Bash(git commit -m 'Friendly weight-rate editor \\(rows\\) + delete order from admin *)"
     ]
   }
 }

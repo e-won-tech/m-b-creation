@@ -215,8 +215,21 @@
     renderSettings();
   }
 
+  function rateRowHtml(max, fee) {
+    return `
+      <div class="rate-row">
+        <span>ไม่เกิน</span>
+        <input type="number" min="0" step="0.5" class="rate-max" value="${escapeAttr(max ?? "")}">
+        <span>กก. →</span>
+        <input type="number" min="0" step="1" class="rate-fee" value="${escapeAttr(fee ?? "")}">
+        <span>บาท</span>
+        <button type="button" class="mini-btn danger rate-del">ลบ</button>
+      </div>`;
+  }
+
   function renderPayment() {
     const shop = state.shop;
+    const rates = shop.shipping_rates || DEFAULT_RATES;
     els.paymentView.innerHTML = `
       <form class="admin-form" id="paymentForm">
         <div class="admin-panel-head">
@@ -243,17 +256,34 @@
             <textarea name="payment_note" placeholder="เช่น โอนแล้วแจ้งสลิปในแชท">${escapeHtml(shop.payment_note || "")}</textarea>
           </label>
           ${renderImageField("payment", "รูป QR / พร้อมเพย์", shop.payment_image_url, shop.payment_image_public_id)}
+          <div class="field span-2">
+            <span>ค่าส่ง Flash ตามน้ำหนักรวม</span>
+            <div id="rateRows">${(rates.brackets || []).map((b) => rateRowHtml(b.max, b.fee)).join("")}</div>
+            <button class="ghost-btn compact-btn" type="button" id="addRate">+ เพิ่มช่วงน้ำหนัก</button>
+            <p class="admin-muted">ถ้าน้ำหนักรวมไม่เกินค่าในแถว → คิดค่าส่งของแถวนั้น (เรียงจากน้อยไปมาก)</p>
+          </div>
           <label class="field span-2">
-            <span>ตารางค่าส่ง Flash (ตามน้ำหนักรวม) — JSON</span>
-            <textarea name="shipping_rates" rows="10" spellcheck="false">${escapeHtml(JSON.stringify(shop.shipping_rates || DEFAULT_RATES, null, 2))}</textarea>
+            <span>เกินน้ำหนักสูงสุด คิดเพิ่มต่อ กก. (บาท)</span>
+            <input name="over_per_kg" type="number" min="0" step="1" value="${escapeAttr(rates.over_per_kg ?? 15)}">
           </label>
-          <p class="admin-muted span-2">brackets เรียงจากน้อยไปมาก: ถ้าน้ำหนักรวม ≤ max ใช้ fee นั้น • เกิน max สูงสุด = fee สูงสุด + (กก.ส่วนเกิน)×over_per_kg</p>
         </div>
         <button class="primary-btn" type="submit">บันทึกการชำระเงิน</button>
       </form>
     `;
     document.querySelector("#paymentForm").addEventListener("submit", savePayment);
     bindImageInputs();
+
+    document.querySelector("#addRate").addEventListener("click", () => {
+      document.querySelector("#rateRows").insertAdjacentHTML("beforeend", rateRowHtml("", ""));
+      bindRateDelete();
+    });
+    bindRateDelete();
+  }
+
+  function bindRateDelete() {
+    document.querySelectorAll(".rate-del").forEach((button) => {
+      button.onclick = () => button.closest(".rate-row").remove();
+    });
   }
 
   async function savePayment(event) {
@@ -276,14 +306,17 @@
         const uploaded = await window.ShopServices.uploadService.uploadPaymentImage(file, state.shop.id);
         image = { url: uploaded.url, publicId: uploaded.publicId };
       }
-      let shippingRates;
-      try {
-        shippingRates = JSON.parse(form.get("shipping_rates") || "{}");
-      } catch (parseError) {
-        toast("ตารางค่าส่ง JSON ไม่ถูกต้อง");
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalLabel; }
-        return;
-      }
+      const brackets = Array.from(formEl.querySelectorAll("#rateRows .rate-row"))
+        .map((row) => ({
+          max: Number(row.querySelector(".rate-max").value),
+          fee: Number(row.querySelector(".rate-fee").value)
+        }))
+        .filter((b) => b.max > 0 && b.fee >= 0)
+        .sort((a, b) => a.max - b.max);
+      const shippingRates = {
+        brackets,
+        over_per_kg: Number(formEl.querySelector('input[name="over_per_kg"]').value) || 15
+      };
       const payload = {
         payment_bank: (form.get("payment_bank") || "").trim(),
         payment_account_no: (form.get("payment_account_no") || "").trim(),
@@ -599,6 +632,7 @@
               <th>ยอดรวม</th>
               <th>สถานะ</th>
               <th>วันที่</th>
+              <th>จัดการ</th>
             </tr>
           </thead>
           <tbody>
@@ -613,6 +647,7 @@
                   </select>
                 </td>
                 <td>${formatDate(order.created_at)}</td>
+                <td><button class="mini-btn danger" type="button" data-delete-order="${escapeAttr(order.id)}">ลบ</button></td>
               </tr>
             `).join("")}
           </tbody>
@@ -620,12 +655,27 @@
       </div>
     `;
     document.querySelectorAll("[data-order-status]").forEach((select) => select.addEventListener("change", () => updateOrderStatus(select.dataset.orderStatus, select.value)));
+    document.querySelectorAll("[data-delete-order]").forEach((button) => button.addEventListener("click", () => removeOrder(button.dataset.deleteOrder)));
   }
 
   async function updateOrderStatus(orderId, status) {
     await window.ShopServices.orderService.updateOrderStatus(orderId, status);
     toast("อัปเดตสถานะออเดอร์แล้ว");
     await loadOrdersView();
+  }
+
+  async function removeOrder(orderId) {
+    const order = state.orders.find((item) => item.id === orderId);
+    const label = order?.order_no || "ออเดอร์นี้";
+    if (!window.confirm(`ลบ "${label}" ถาวร? ลบแล้วกู้คืนไม่ได้`)) return;
+    try {
+      await window.ShopServices.orderService.deleteOrder(orderId);
+      toast("ลบออเดอร์แล้ว");
+      await loadOrdersView();
+    } catch (error) {
+      console.error(error);
+      toast(error.message || "ลบออเดอร์ไม่สำเร็จ");
+    }
   }
 
   async function loadMembersView() {

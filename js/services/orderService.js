@@ -59,6 +59,13 @@
     return data;
   }
 
+  async function deleteOrder(orderId) {
+    const supabase = core().requireSupabaseClient();
+    const { error } = await supabase.from("orders").delete().eq("id", orderId);
+    if (error) throw core().publicError("ลบออเดอร์ไม่สำเร็จ", error);
+    return true;
+  }
+
   async function getSalesSummary(shopId, range = {}) {
     const orders = await loadOrders(shopId, { ...range });
     const paidOrders = orders.filter((order) => order.status !== "cancelled");
@@ -97,6 +104,7 @@
     loadOrders,
     loadOrderDetail,
     updateOrderStatus,
+    deleteOrder,
     getSalesSummary,
     subscribeNewOrders,
     ordersToCsv,

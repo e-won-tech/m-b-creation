@@ -2,6 +2,29 @@
   background: var(--bg);
 }
 
+.rate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.rate-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.rate-row input {
+  width: 90px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+}
+
 .admin-header {
   position: sticky;
   top: 0;
