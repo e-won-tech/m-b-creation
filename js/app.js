@@ -1082,8 +1082,8 @@ function openFallbackMessage(message) {
     </div>
   `);
   document.querySelector("#copyMessage").addEventListener("click", async () => {
-    await navigator.clipboard?.writeText(message);
-    toast("คัดลอกข้อความแล้ว");
+    const ok = await copyText(message);
+    toast(ok ? "คัดลอกข้อความแล้ว" : "คัดลอกไม่ได้ ลองแตะข้อความค้างไว้");
   });
   document.querySelector("#keepCart").addEventListener("click", renderCart);
 }
@@ -1361,13 +1361,38 @@ function openPayment(orderNo, amount) {
   `);
 
   document.querySelector("#copyAcct")?.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard?.writeText(shop.payment_account_no);
-      toast("คัดลอกเลขบัญชีแล้ว");
-    } catch (error) {
-      toast("คัดลอกไม่สำเร็จ");
-    }
+    const ok = await copyText(shop.payment_account_no);
+    toast(ok ? "คัดลอกเลขบัญชีแล้ว" : "คัดลอกไม่ได้ ลองแตะที่เลขค้างไว้เพื่อคัดลอก");
   });
+}
+
+// คัดลอกข้อความแบบรองรับ webview ใน LINE (Clipboard API มักถูกบล็อก จึง fallback execCommand)
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (error) {
+    // fall through to legacy method
+  }
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.top = "0";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    textarea.remove();
+    return ok;
+  } catch (error) {
+    return false;
+  }
 }
 
 function openSheet(html) {

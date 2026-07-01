@@ -899,6 +899,8 @@ body.sheet-open {
 .pay-row strong {
   color: var(--ink);
   text-align: right;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .order-summary-box {
