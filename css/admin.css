@@ -419,6 +419,12 @@
   gap: 10px;
 }
 
+.ship-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .notify-tracking label {
   display: grid;
   gap: 4px;

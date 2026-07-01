@@ -692,8 +692,15 @@
         return `สวัสดีค่ะ 🙏\nร้าน ${shopName} ได้รับการชำระเงินสำหรับออเดอร์ ${orderNo} เรียบร้อยแล้วค่ะ\nยอดชำระ ${total}\nร้านกำลังจัดเตรียมสินค้าให้นะคะ ขอบคุณที่อุดหนุนค่ะ`;
       case "packing":
         return `ออเดอร์ ${orderNo} ทางร้านกำลังแพ็กสินค้าอยู่นะคะ จะรีบจัดส่งให้เร็วที่สุดค่ะ 🙏`;
-      case "shipped":
-        return `📦 ออเดอร์ ${orderNo} จัดส่งเรียบร้อยแล้วค่ะ\nขนส่ง: ${carrier}\nเลขพัสดุ: ${tracking}\nสามารถติดตามสถานะพัสดุได้เลยนะคะ ขอบคุณที่อุดหนุนค่ะ 🙏`;
+      case "shipped": {
+        if (extra.mode === "private") {
+          return `ทางร้านจัดส่งพัสดุเรียบร้อยแล้วนะคะ 🙏\nส่งโดยขนส่ง ${carrier} ค่าจัดส่งชำระปลายทางนะคะ\nเพื่อความสะดวกรวดเร็วในการจัดส่งสินค้า กรุณารับสายจากเจ้าหน้าที่ขนส่งด้วยนะคะ ขอบพระคุณมากๆค่าา 🙏🏻`;
+        }
+        const trackLink = /flash/i.test(carrier)
+          ? `\nหรือลูกค้าสามารถเช็คพัสดุได้ทางลิ้งค์นี้ค่ะ\nhttps://www.flashexpress.co.th/fle/tracking?se=${encodeURIComponent(tracking)}`
+          : "";
+        return `ทางร้านจัดส่งพัสดุเรียบร้อยแล้ว ขออนุญาตแจ้งเลขพัสดุนะคะ\n${tracking} ขนส่ง ${carrier}${trackLink}\n\nลูกค้าจะได้รับสินค้าภายใน 3-5 วันทำการ หลังจากจัดส่ง 😊 ซึ่งจะขึ้นอยู่กับแต่ละพื้นที่ อาจจะเร็วและช้าตามเขตและพื้นที่จัดส่งนะคะ\nเพื่อความสะดวกรวดเร็วในการจัดส่งสินค้า กรุณารับสายจากเจ้าหน้าที่ขนส่งด้วยนะคะ ขอบพระคุณมากๆค่าา 🙏🏻`;
+      }
       case "pickup":
         return `ออเดอร์ ${orderNo} เตรียมพร้อมให้เข้ารับแล้วนะคะ 🙏\nรบกวนมารับตามวันและเวลาที่นัดไว้ค่ะ หากมีการเปลี่ยนแปลงแจ้งทางร้านได้เลยนะคะ`;
       case "remind":
@@ -722,8 +729,12 @@
           ${NOTIFY_TEMPLATES.map((tpl, index) => `<button class="chip-btn ${index === 0 ? "is-active" : ""}" type="button" data-tpl="${tpl.key}">${tpl.label}</button>`).join("")}
         </div>
         <div class="notify-tracking is-hidden" data-tracking-fields>
-          <label>ขนส่ง<input type="text" data-carrier placeholder="เช่น Flash, Kerry, ไปรษณีย์"></label>
-          <label>เลขพัสดุ<input type="text" data-tracking placeholder="กรอกเลขพัสดุ"></label>
+          <div class="ship-mode">
+            <button class="chip-btn is-active" type="button" data-ship-mode="parcel">มีเลขพัสดุ (Flash/ไปรษณีย์)</button>
+            <button class="chip-btn" type="button" data-ship-mode="private">ขนส่งเอกชน (เก็บปลายทาง)</button>
+          </div>
+          <label>ขนส่ง<input type="text" data-carrier placeholder="เช่น Flash Express, ไปรษณีย์, ศิริสมบูรณ์ทรัพย์"></label>
+          <label data-tracking-label>เลขพัสดุ<input type="text" data-tracking placeholder="กรอกเลขพัสดุ"></label>
         </div>
         <textarea class="notify-text" data-notify-text rows="7"></textarea>
         <p class="upload-hint">แก้ไขข้อความได้ก่อนคัดลอก แล้วนำไปวางในแชท LINE ของลูกค้า</p>
@@ -736,21 +747,29 @@
     document.body.append(overlay);
 
     let current = NOTIFY_TEMPLATES[0].key;
+    let shipMode = "parcel";
     const textEl = overlay.querySelector("[data-notify-text]");
     const trackWrap = overlay.querySelector("[data-tracking-fields]");
+    const trackLabel = overlay.querySelector("[data-tracking-label]");
     const carrierEl = overlay.querySelector("[data-carrier]");
     const trackEl = overlay.querySelector("[data-tracking]");
 
     function regenerate() {
       const tpl = NOTIFY_TEMPLATES.find((item) => item.key === current);
       trackWrap.classList.toggle("is-hidden", !tpl.needsTracking);
-      textEl.value = buildNotifyMessage(current, order, { carrier: carrierEl.value, tracking: trackEl.value });
+      trackLabel.classList.toggle("is-hidden", shipMode === "private");
+      textEl.value = buildNotifyMessage(current, order, { carrier: carrierEl.value, tracking: trackEl.value, mode: shipMode });
     }
     regenerate();
 
     overlay.querySelectorAll("[data-tpl]").forEach((btn) => btn.addEventListener("click", () => {
       current = btn.dataset.tpl;
       overlay.querySelectorAll("[data-tpl]").forEach((node) => node.classList.toggle("is-active", node === btn));
+      regenerate();
+    }));
+    overlay.querySelectorAll("[data-ship-mode]").forEach((btn) => btn.addEventListener("click", () => {
+      shipMode = btn.dataset.shipMode;
+      overlay.querySelectorAll("[data-ship-mode]").forEach((node) => node.classList.toggle("is-active", node === btn));
       regenerate();
     }));
     carrierEl.addEventListener("input", regenerate);
