@@ -1,8 +1,8 @@
 (function () {
   const DEFAULT_RATES = {
     brackets: [
-      { max: 1, fee: 40 },
-      { max: 3, fee: 55 },
+      { max: 1, fee: 60 },
+      { max: 3, fee: 60 },
       { max: 5, fee: 70 },
       { max: 10, fee: 110 },
       { max: 15, fee: 180 },

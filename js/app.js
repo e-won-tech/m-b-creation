@@ -591,8 +591,8 @@ function onShippingChange(shipping) {
 
 const DEFAULT_SHIPPING_RATES = {
   brackets: [
-    { max: 1, fee: 40 },
-    { max: 3, fee: 55 },
+    { max: 1, fee: 60 },
+    { max: 3, fee: 60 },
     { max: 5, fee: 70 },
     { max: 10, fee: 110 },
     { max: 15, fee: 180 },
@@ -602,18 +602,20 @@ const DEFAULT_SHIPPING_RATES = {
   over_per_kg: 15
 };
 
-// ค่าส่ง Flash ตามน้ำหนักรวม (ตารางเรตจากร้าน หรือค่าเริ่มต้น)
+const MIN_FLASH_FEE = 60;
+
+// ค่าส่ง Flash ตามน้ำหนักรวม (ตารางเรตจากร้าน หรือค่าเริ่มต้น) ขั้นต่ำ 60 บาท
 function flashFeeByWeight(totalWeight) {
   const rates = CURRENT_SHOP?.shipping_rates || DEFAULT_SHIPPING_RATES;
   const brackets = (rates.brackets || []).slice().sort((a, b) => Number(a.max) - Number(b.max));
   const hit = brackets.find((b) => totalWeight <= Number(b.max));
-  if (hit) return Number(hit.fee);
+  if (hit) return Math.max(MIN_FLASH_FEE, Number(hit.fee));
   if (brackets.length) {
     const last = brackets[brackets.length - 1];
     const over = Number(rates.over_per_kg ?? 15);
-    return Number(last.fee) + Math.ceil(Math.max(0, totalWeight - Number(last.max))) * over;
+    return Math.max(MIN_FLASH_FEE, Number(last.fee) + Math.ceil(Math.max(0, totalWeight - Number(last.max))) * over);
   }
-  return 60;
+  return MIN_FLASH_FEE;
 }
 
 // คำนวณค่าส่งตามกฎ (ฝั่ง client เพื่อแสดงผล/เตือนล่วงหน้า — ฝั่ง RPC คิดซ้ำเป็นค่าจริง)
