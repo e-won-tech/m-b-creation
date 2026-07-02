@@ -1353,6 +1353,23 @@ function renderMember() {
   document.querySelectorAll("[data-reorder]").forEach((button) => {
     button.addEventListener("click", () => reorder(history[Number(button.dataset.reorder)]));
   });
+  document.querySelectorAll("[data-contact]").forEach((button) => {
+    button.addEventListener("click", () => contactShopAboutOrder(button.dataset.contact));
+  });
+}
+
+async function contactShopAboutOrder(orderNo) {
+  const text = `ติดต่อสอบถามเกี่ยวกับออเดอร์เลขที่ ${orderNo || ""}`.trim();
+  if (canSendLiffMessage()) {
+    try {
+      await liff.sendMessages([{ type: "text", text }]);
+      liff.closeWindow?.();
+      return;
+    } catch (error) {
+      console.error("contactShopAboutOrder error:", error);
+    }
+  }
+  toast("เปิดผ่านแชท LINE เพื่อติดต่อร้านค้า");
 }
 
 function renderMemberStats(member) {
@@ -1394,16 +1411,33 @@ async function joinMember() {
   }
 }
 
+const ORDER_STATUS_LABELS = {
+  pending: "รอดำเนินการ",
+  waiting_payment: "รอชำระเงิน",
+  paid: "แจ้งชำระแล้ว / รอตรวจสอบ",
+  confirmed: "ยืนยันการชำระเงิน",
+  packing: "กำลังแพ็กสินค้า",
+  shipped: "จัดส่งแล้ว",
+  completed: "เสร็จสิ้น",
+  cancelled: "ยกเลิก"
+};
+
 function renderHistoryItem(order, index) {
-  const total = order.items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
+  const total = Number(order.total ?? order.items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0));
+  const orderNo = order.date || `ออเดอร์ #${index + 1}`;
+  const statusLabel = ORDER_STATUS_LABELS[order.status] || order.status || "";
   return `
     <div class="history-item">
       <div class="cart-line">
-        <strong>${escapeHtml(order.date || `ออเดอร์ #${index + 1}`)}</strong>
+        <strong>${escapeHtml(orderNo)}</strong>
         <strong>${money(total)}</strong>
       </div>
+      ${statusLabel ? `<span class="order-status">${escapeHtml(statusLabel)}</span>` : ""}
       <div class="pack">${escapeHtml(order.items.map((item) => `${item.name} x${item.qty}`).join(", "))}</div>
-      <button class="ghost-btn" type="button" data-reorder="${index}">สั่งซื้อซ้ำ / แก้ไขรายการ</button>
+      <div class="history-actions">
+        <button class="ghost-btn" type="button" data-reorder="${index}">สั่งซ้ำ</button>
+        <button class="ghost-btn" type="button" data-contact="${escapeAttr(orderNo)}">ติดต่อร้านค้า</button>
+      </div>
     </div>
   `;
 }
