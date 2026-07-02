@@ -47,6 +47,15 @@ async function init() {
   bindElements();
   bindEvents();
   renderStaticIcons();
+
+  // ปุ่มในการ์ดออเดอร์เปิดหน้านี้พร้อม action=send → ส่งข้อความเข้าแชทแล้วปิดทันที (ไม่ต้องโหลดร้าน)
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("action") === "send") {
+    await initLiff();
+    const sent = await autoSendToChat(params.get("text") || "");
+    if (sent) return;
+  }
+
   await hydrateShopFromDataLayer();
   applyBranding();
   renderSkeleton();
@@ -1079,25 +1088,25 @@ function buildOrderFlex(values, result) {
   };
 }
 
-// ปุ่มในการ์ดออเดอร์ (ถ้าตั้ง OA id): กดแล้วส่งข้อความเข้าแชท → OA ตอบกลับอัตโนมัติ
+// ปุ่มในการ์ดออเดอร์: เปิดหน้า LIFF พร้อม action=send → ส่งข้อความเข้าแชทเองอัตโนมัติ → OA ตอบกลับอัตโนมัติ
 function buildOrderFlexFooter(primary, orderNo) {
-  const oaId = SHOP_CONFIG.lineOaId;
-  if (!oaId) return [];
+  if (!SHOP_CONFIG.liffId) return [];
 
   const ref = orderNo ? ` ออเดอร์ ${orderNo}` : "";
-  const oaMsgUri = (text) => `https://line.me/R/oaMessage/${encodeURIComponent(oaId)}/?${encodeURIComponent(text)}`;
+  const base = `https://liff.line.me/${SHOP_CONFIG.liffId}`;
+  const sendUri = (text) => `${base}?action=send&text=${encodeURIComponent(text)}`;
   return [
     {
       type: "button",
       style: "primary",
       color: primary,
-      action: { type: "uri", label: "💳 แจ้งชำระเงิน", uri: oaMsgUri(`แจ้งชำระเงิน${ref}`) }
+      action: { type: "uri", label: "💳 แจ้งชำระเงิน", uri: sendUri(`แจ้งชำระเงิน${ref}`) }
     },
     {
       type: "button",
       style: "secondary",
       height: "sm",
-      action: { type: "uri", label: "📦 สอบถามสถานะ", uri: oaMsgUri(`เช็คสถานะ${ref}`) }
+      action: { type: "uri", label: "📦 สอบถามสถานะ", uri: sendUri(`เช็คสถานะ${ref}`) }
     },
     { type: "text", text: "กดปุ่มเพื่อแจ้งร้าน ระบบจะตอบกลับอัตโนมัติ", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
   ];
@@ -1153,9 +1162,11 @@ function openFallbackMessage(message) {
 }
 
 async function initLiff() {
+  if (window.__liffInited) return;
   if (!window.liff || !SHOP_CONFIG.liffId) return;
   try {
     await liff.init({ liffId: SHOP_CONFIG.liffId });
+    window.__liffInited = true;
   } catch (error) {
     console.error("LIFF init error:", error);
     showBanner(`LIFF init: ${error?.code || ""} ${error?.message || error}`.trim());
@@ -1376,6 +1387,24 @@ function demoHistory() {
       items: cartItems().length ? cartItems() : [{ name: "ชาเขียวมัทฉะพรีเมียม", qty: 1, price: 89 }]
     }
   ];
+}
+
+// ส่งข้อความเข้าแชทอัตโนมัติ (ใช้กับปุ่มในการ์ดออเดอร์ → ให้ OA ตอบกลับอัตโนมัติ)
+async function autoSendToChat(text) {
+  if (!text) return false;
+  if (!canSendLiffMessage()) {
+    showBanner("เปิดผ่านแชท LINE เพื่อส่งข้อความ");
+    return false;
+  }
+  try {
+    await liff.sendMessages([{ type: "text", text }]);
+    liff.closeWindow?.();
+    return true;
+  } catch (error) {
+    console.error("autoSendToChat error:", error);
+    showBanner(`ส่งข้อความไม่สำเร็จ: ${error?.code || ""} ${error?.message || error}`.trim());
+    return false;
+  }
 }
 
 function handleQueryString() {
