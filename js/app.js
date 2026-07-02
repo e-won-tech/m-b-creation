@@ -67,6 +67,45 @@ async function init() {
 
   await initLiff();
   handleQueryString();
+  maybeShowLineInvite();
+}
+
+// เชิญชวนให้เปิดผ่าน LINE (เฉพาะคนที่เข้าเว็บตรง ไม่ได้เปิดผ่านแอป LINE) — เด้งครั้งแรกครั้งเดียว
+function maybeShowLineInvite() {
+  if (!SHOP_CONFIG.liffId) return;
+  if (window.liff?.isInClient?.()) return; // เปิดผ่าน LINE อยู่แล้ว ไม่ต้องเชิญ
+  try {
+    if (localStorage.getItem("mb_line_invite_dismissed")) return;
+  } catch (error) {
+    // localStorage อาจถูกปิด — ก็ยังโชว์ป๊อปอัปได้
+  }
+
+  const dismiss = () => {
+    try { localStorage.setItem("mb_line_invite_dismissed", "1"); } catch (error) { /* ignore */ }
+    overlay.remove();
+  };
+
+  const liffUrl = `https://liff.line.me/${SHOP_CONFIG.liffId}`;
+  const overlay = document.createElement("div");
+  overlay.className = "invite-overlay";
+  overlay.innerHTML = `
+    <div class="invite-modal" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+      <button class="invite-close" type="button" aria-label="ปิด">×</button>
+      <img class="invite-logo" src="${escapeAttr(SHOP_CONFIG.logoUrl || "")}" alt="">
+      <h2 id="inviteTitle">สั่งซื้อสะดวกกว่าผ่าน LINE</h2>
+      <p>เปิดร้าน ${escapeHtml(SHOP_CONFIG.shopName || "")} ผ่าน LINE เพื่อสั่งซื้อ ส่งสลิป ติดตามสถานะออเดอร์ และรับสิทธิ์สมาชิกได้ครบในที่เดียว</p>
+      <a class="primary-btn invite-open" href="${escapeAttr(liffUrl)}" target="_blank" rel="noopener">เปิดใน LINE</a>
+      <button class="ghost-btn" type="button" id="inviteStay">ดูบนเว็บต่อไปก่อน</button>
+    </div>
+  `;
+  document.body.append(overlay);
+
+  overlay.querySelector(".invite-close").addEventListener("click", dismiss);
+  overlay.querySelector("#inviteStay").addEventListener("click", dismiss);
+  overlay.querySelector(".invite-open").addEventListener("click", dismiss);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) dismiss();
+  });
 }
 
 function bindElements() {
