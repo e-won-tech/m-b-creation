@@ -1089,10 +1089,10 @@ function buildOrderFlex(values, result) {
 }
 
 // ปุ่มในการ์ดออเดอร์: เปิดหน้า LIFF พร้อม action=send → ส่งข้อความเข้าแชทเองอัตโนมัติ → OA ตอบกลับอัตโนมัติ
+// ข้อความต้องตรงกับ keyword ของ LINE OA เป๊ะ (exact match) จึงส่งเป็นคำสั้น ๆ ไม่มีเลขออเดอร์
 function buildOrderFlexFooter(primary, orderNo) {
   if (!SHOP_CONFIG.liffId) return [];
 
-  const ref = orderNo ? ` ออเดอร์ ${orderNo}` : "";
   const base = `https://liff.line.me/${SHOP_CONFIG.liffId}`;
   const sendUri = (text) => `${base}?action=send&text=${encodeURIComponent(text)}`;
   return [
@@ -1100,13 +1100,13 @@ function buildOrderFlexFooter(primary, orderNo) {
       type: "button",
       style: "primary",
       color: primary,
-      action: { type: "uri", label: "💳 แจ้งชำระเงิน", uri: sendUri(`แจ้งชำระเงิน${ref}`) }
+      action: { type: "uri", label: "💳 แจ้งชำระเงิน", uri: sendUri("แจ้งชำระเงิน") }
     },
     {
       type: "button",
       style: "secondary",
       height: "sm",
-      action: { type: "uri", label: "📦 สอบถามสถานะ", uri: sendUri(`เช็คสถานะ${ref}`) }
+      action: { type: "uri", label: "📦 สอบถามสถานะ", uri: sendUri("เช็คสถานะ") }
     },
     { type: "text", text: "กดปุ่มเพื่อแจ้งร้าน ระบบจะตอบกลับอัตโนมัติ", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
   ];
