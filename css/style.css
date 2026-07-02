@@ -744,6 +744,18 @@ body.sheet-open {
   margin-top: 14px;
 }
 
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.action-row > button {
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 .primary-btn,
 .secondary-btn,
 .ghost-btn {

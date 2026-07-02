@@ -400,9 +400,11 @@ function renderDetail(product) {
         </div>
       </div>
       <div class="action-stack">
-        <button class="primary-btn" type="button" id="detailAdd" ${out ? "disabled" : ""}>เพิ่มลงตะกร้า</button>
-        <button class="secondary-btn" type="button" id="askProduct">สอบถามสินค้ากับร้าน</button>
-        <button class="ghost-btn" type="button" id="shareProduct">แชร์สินค้า</button>
+        <div class="action-row">
+          <button class="primary-btn" type="button" id="detailAdd" ${out ? "disabled" : ""}>เพิ่มลงตะกร้า</button>
+          <button class="secondary-btn" type="button" id="askProduct">สอบถามสินค้ากับร้าน</button>
+        </div>
+        <button class="ghost-btn" type="button" id="shareProduct">แชร์สินค้าผ่านไลน์</button>
       </div>
     </div>
   `);
