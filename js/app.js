@@ -1254,14 +1254,8 @@ async function askProduct(product) {
 }
 
 async function shareProduct(product) {
-  // ลิงก์เปิดสินค้านี้โดยตรง (ผ่าน LIFF เพื่อให้เพื่อนกดสั่งซื้อได้)
-  const shareUrl = SHOP_CONFIG.liffId
-    ? `https://liff.line.me/${SHOP_CONFIG.liffId}?pname=${encodeURIComponent(product.name)}`
-    : (() => {
-        const link = new URL(window.location.href);
-        link.search = new URLSearchParams({ pname: product.name }).toString();
-        return link.toString();
-      })();
+  // ใช้ URL เว็บตรง ๆ (เปิดได้ทุกที่ ไม่ใช่ liff.line.me ที่คนนอก LINE กดแล้ว 404)
+  const shareUrl = `${window.location.origin}/?pname=${encodeURIComponent(product.name)}`;
 
   // เปิดในแอป LINE → แชร์เป็นการ์ดสวย ๆ ให้เพื่อน
   if (window.liff?.isInClient?.() && typeof liff.shareTargetPicker === "function") {
