@@ -1225,15 +1225,29 @@ async function askProduct(product) {
 }
 
 async function shareProduct(product) {
-  const link = new URL(window.location.href);
-  link.search = new URLSearchParams({ pname: product.name }).toString();
-  const url = link.toString();
-  const shareData = {
-    title: product.name,
-    text: `${product.name} • ${product.pack || ""} • ${money(product.price)}`,
-    url
-  };
+  // ลิงก์เปิดสินค้านี้โดยตรง (ผ่าน LIFF เพื่อให้เพื่อนกดสั่งซื้อได้)
+  const shareUrl = SHOP_CONFIG.liffId
+    ? `https://liff.line.me/${SHOP_CONFIG.liffId}?pname=${encodeURIComponent(product.name)}`
+    : (() => {
+        const link = new URL(window.location.href);
+        link.search = new URLSearchParams({ pname: product.name }).toString();
+        return link.toString();
+      })();
 
+  // เปิดในแอป LINE → แชร์เป็นการ์ดสวย ๆ ให้เพื่อน
+  if (window.liff?.isInClient?.() && typeof liff.shareTargetPicker === "function") {
+    try {
+      const result = await liff.shareTargetPicker([buildProductFlex(product, shareUrl)]);
+      if (result) toast("แชร์สินค้าแล้ว");
+      return;
+    } catch (error) {
+      console.error("shareTargetPicker error:", error);
+      // ตกไปใช้วิธีสำรองด้านล่าง
+    }
+  }
+
+  // นอกแอป LINE → แชร์ผ่านระบบเครื่อง หรือคัดลอกลิงก์
+  const shareData = { title: product.name, text: `${product.name} • ${product.pack || ""} • ${money(product.price)}`, url: shareUrl };
   if (navigator.share) {
     try {
       await navigator.share(shareData);
@@ -1242,33 +1256,38 @@ async function shareProduct(product) {
       if (error?.name === "AbortError") return;
     }
   }
-
-  const ok = await copyText(url);
+  const ok = await copyText(shareUrl);
   toast(ok ? "คัดลอกลิงก์สินค้าแล้ว" : "คัดลอกลิงก์ไม่สำเร็จ ลองแตะลิงก์ค้างไว้");
 }
 
 function buildProductFlex(product, uri) {
+  const primary = "#3B9344";
+  const bubble = {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        { type: "text", text: SHOP_CONFIG.shopName || "", size: "xs", color: "#AAAAAA", wrap: true },
+        { type: "text", text: product.name, weight: "bold", size: "lg", wrap: true },
+        { type: "text", text: product.pack || product.cat || "", size: "sm", color: "#666666", wrap: true },
+        { type: "text", text: money(product.price), weight: "bold", size: "xl", color: primary, margin: "md" }
+      ]
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      contents: [{ type: "button", style: "primary", color: primary, action: { type: "uri", label: "ดูสินค้า / สั่งซื้อ", uri } }]
+    }
+  };
+  if (product.image) {
+    bubble.hero = { type: "image", url: product.image, size: "full", aspectRatio: "1:1", aspectMode: "cover" };
+  }
   return {
     type: "flex",
-    altText: product.name,
-    contents: {
-      type: "bubble",
-      hero: { type: "image", url: product.image, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          { type: "text", text: product.name, weight: "bold", wrap: true },
-          { type: "text", text: product.pack || product.cat, size: "sm", color: "#666666", wrap: true },
-          { type: "text", text: money(product.price), weight: "bold", color: "#287034", margin: "md" }
-        ]
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        contents: [{ type: "button", style: "primary", action: { type: "uri", label: "ดูสินค้า / สั่งซื้อ", uri } }]
-      }
-    }
+    altText: `${product.name} ${money(product.price)}`,
+    contents: bubble
   };
 }
 
