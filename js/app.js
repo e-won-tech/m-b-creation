@@ -1068,7 +1068,7 @@ function buildOrderFlex(values, result) {
     contents: detailLines.map((line) => ({ type: "text", text: line, size: "xs", color: "#888888", wrap: true }))
   });
 
-  const footerContents = buildOrderFlexFooter(primary, orderNo);
+  const footerContents = buildOrderFlexFooter(primary, orderNo, values.pay);
   const bubble = {
     type: "bubble",
     header: {
@@ -1101,18 +1101,20 @@ function buildOrderFlex(values, result) {
 
 // ปุ่มในการ์ดออเดอร์: เปิดหน้า LIFF พร้อม action=send → ส่งข้อความเข้าแชทเองอัตโนมัติ → OA ตอบกลับอัตโนมัติ
 // ข้อความต้องตรงกับ keyword ของ LINE OA เป๊ะ (exact match) จึงส่งเป็นคำสั้น ๆ ไม่มีเลขออเดอร์
-function buildOrderFlexFooter(primary, orderNo) {
+// COD (เก็บเงินปลายทาง) ไม่ต้องแจ้งชำระ → ใช้ปุ่ม "ยืนยันออเดอร์" แทน
+function buildOrderFlexFooter(primary, orderNo, payMethod) {
   if (!SHOP_CONFIG.liffId) return [];
 
   const base = `https://liff.line.me/${SHOP_CONFIG.liffId}`;
   const sendUri = (text) => `${base}?action=send&text=${encodeURIComponent(text)}`;
+  const isCod = /COD|ปลายทาง/.test(payMethod || "");
+
+  const primaryBtn = isCod
+    ? { type: "button", style: "primary", color: primary, action: { type: "uri", label: "✅ ยืนยันออเดอร์", uri: sendUri("ยืนยันออเดอร์") } }
+    : { type: "button", style: "primary", color: primary, action: { type: "uri", label: "💳 แจ้งชำระเงิน", uri: sendUri("แจ้งชำระเงิน") } };
+
   return [
-    {
-      type: "button",
-      style: "primary",
-      color: primary,
-      action: { type: "uri", label: "💳 แจ้งชำระเงิน", uri: sendUri("แจ้งชำระเงิน") }
-    },
+    primaryBtn,
     {
       type: "button",
       style: "secondary",
