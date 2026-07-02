@@ -345,6 +345,64 @@
   display: none !important;
 }
 
+.order-detail-row td {
+  background: var(--soft);
+}
+
+.order-detail {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  padding: 6px 4px;
+}
+
+.order-detail-block h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detail-items {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.detail-items li {
+  font-size: 13px;
+}
+
+.detail-kv {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.detail-kv th,
+.detail-kv td {
+  padding: 4px 8px 4px 0;
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.detail-kv th {
+  width: 110px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.detail-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  white-space: pre-line;
+}
+
 .notify-overlay {
   position: fixed;
   inset: 0;

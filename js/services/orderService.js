@@ -2,7 +2,7 @@
   window.ShopServices = window.ShopServices || {};
   const core = () => window.ShopServices.core;
 
-  const ORDER_COLUMNS = "id, shop_id, order_no, line_user_id, line_display_name, customer_name, pay_method, note, tax_required, tax_info, total, status, line_message_sent, created_at, updated_at";
+  const ORDER_COLUMNS = "id, shop_id, order_no, line_user_id, line_display_name, customer_name, customer_phone, customer_address, pay_method, note, shipping_fee, tax_required, tax_info, total, status, line_message_sent, created_at, updated_at";
 
   function validateCartPayload(payload) {
     if (!payload?.shop_slug) throw new Error("ไม่พบร้านค้านี้");
@@ -28,7 +28,7 @@
     const supabase = core().requireSupabaseClient();
     let query = supabase
       .from("orders")
-      .select(ORDER_COLUMNS)
+      .select(`${ORDER_COLUMNS}, order_items(product_name, pack, qty, price, subtotal)`)
       .eq("shop_id", shopId)
       .order("created_at", { ascending: false });
 

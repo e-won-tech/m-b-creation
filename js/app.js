@@ -1006,7 +1006,8 @@ function buildOrderFlex(values, result) {
   const primary = "#3B9344";
   const total = Number(result?.total ?? cartTotal());
   const orderNo = result?.order_no || "";
-  const payUri = `https://liff.line.me/${SHOP_CONFIG.liffId}?view=payment&order=${encodeURIComponent(orderNo)}&amount=${total}`;
+  const subtotal = values.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const shipFee = Math.max(0, total - subtotal);
 
   const itemRows = values.items.map((item) => ({
     type: "box",
@@ -1017,79 +1018,89 @@ function buildOrderFlex(values, result) {
     ]
   }));
 
+  const amountRow = (label, value, strong) => ({
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      { type: "text", text: label, size: strong ? "md" : "sm", color: strong ? "#111111" : "#666666", weight: strong ? "bold" : "regular" },
+      { type: "text", text: value, size: strong ? "md" : "sm", color: strong ? primary : "#111111", align: "end", weight: strong ? "bold" : "regular" }
+    ]
+  });
+
+  // รายละเอียดผู้สั่ง/จัดส่ง/ชำระเงิน (buildShippingSummary รวม เบอร์โทร ที่อยู่ วันรับ ขนส่ง หมายเหตุ ให้แล้ว)
+  const detailLines = [`ผู้สั่ง: ${values.customer}`];
+  buildShippingSummary(values).forEach((line) => detailLines.push(line.replace(/\*\*/g, "").trim()));
+  detailLines.push(`ชำระเงิน: ${values.pay}`);
+  if (values.tax) detailLines.push(`ใบกำกับภาษี: ${values.taxInfo || "ต้องการใบกำกับภาษี"}`);
+
   const bodyContents = [...itemRows];
+  bodyContents.push({ type: "separator", margin: "md" });
+  bodyContents.push({ ...amountRow("ยอดสินค้า", money(subtotal)), margin: "md" });
+  bodyContents.push(amountRow("ค่าจัดส่ง", shipFee > 0 ? money(shipFee) : "-"));
+  bodyContents.push({ type: "separator", margin: "md" });
+  bodyContents.push({ ...amountRow("ยอดรวมทั้งหมด", money(total), true), margin: "md" });
   bodyContents.push({ type: "separator", margin: "md" });
   bodyContents.push({
     type: "box",
-    layout: "horizontal",
+    layout: "vertical",
     margin: "md",
-    contents: [
-      { type: "text", text: "ยอดรวม", weight: "bold", color: "#111111" },
-      { type: "text", text: money(total), weight: "bold", color: primary, align: "end" }
-    ]
+    spacing: "sm",
+    contents: detailLines.map((line) => ({ type: "text", text: line, size: "xs", color: "#888888", wrap: true }))
   });
-  if (values.customer) bodyContents.push({ type: "text", text: `ผู้สั่ง: ${values.customer}`, size: "xs", color: "#888888", margin: "md", wrap: true });
-  if (values.shipping) bodyContents.push({ type: "text", text: `จัดส่ง: ${values.shipping}`, size: "xs", color: "#888888", wrap: true });
+
+  const footerContents = buildOrderFlexFooter(primary, orderNo);
+  const bubble = {
+    type: "bubble",
+    header: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: primary,
+      paddingAll: "16px",
+      contents: [
+        { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", color: "#FFFFFF", weight: "bold", size: "lg", wrap: true },
+        { type: "text", text: `เลขออเดอร์ ${orderNo || "-"}`, color: "#EAF6EC", size: "sm", margin: "sm" }
+      ]
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: bodyContents
+    }
+  };
+  if (footerContents.length) {
+    bubble.footer = { type: "box", layout: "vertical", spacing: "sm", contents: footerContents };
+  }
 
   return {
     type: "flex",
     altText: `คำสั่งซื้อ ${orderNo} ยอดรวม ${money(total)}`,
-    contents: {
-      type: "bubble",
-      header: {
-        type: "box",
-        layout: "vertical",
-        backgroundColor: primary,
-        paddingAll: "16px",
-        contents: [
-          { type: "text", text: SHOP_CONFIG.shopName || "คำสั่งซื้อใหม่", color: "#FFFFFF", weight: "bold", size: "lg", wrap: true },
-          { type: "text", text: `เลขออเดอร์ ${orderNo || "-"}`, color: "#EAF6EC", size: "sm", margin: "sm" }
-        ]
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        spacing: "sm",
-        contents: bodyContents
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        spacing: "sm",
-        contents: buildOrderFlexFooter(primary, payUri, orderNo)
-      }
-    }
+    contents: bubble
   };
 }
 
-// ปุ่มในการ์ดออเดอร์: ชำระเงิน + (ถ้าตั้ง OA id) ปุ่มกดส่งข้อความให้ OA ตอบกลับอัตโนมัติ
-function buildOrderFlexFooter(primary, payUri, orderNo) {
-  const contents = [
-    { type: "button", style: "primary", color: primary, action: { type: "uri", label: "💳 ชำระเงิน", uri: payUri } },
-    { type: "text", text: "กดเพื่อดู QR และเลขบัญชี", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
-  ];
-
+// ปุ่มในการ์ดออเดอร์ (ถ้าตั้ง OA id): กดแล้วส่งข้อความเข้าแชท → OA ตอบกลับอัตโนมัติ
+function buildOrderFlexFooter(primary, orderNo) {
   const oaId = SHOP_CONFIG.lineOaId;
-  if (oaId) {
-    const ref = orderNo ? ` ออเดอร์ ${orderNo}` : "";
-    const oaMsgUri = (text) => `https://line.me/R/oaMessage/${encodeURIComponent(oaId)}/?${encodeURIComponent(text)}`;
-    contents.push({ type: "separator", margin: "md" });
-    contents.push({
+  if (!oaId) return [];
+
+  const ref = orderNo ? ` ออเดอร์ ${orderNo}` : "";
+  const oaMsgUri = (text) => `https://line.me/R/oaMessage/${encodeURIComponent(oaId)}/?${encodeURIComponent(text)}`;
+  return [
+    {
       type: "button",
-      style: "secondary",
-      height: "sm",
-      margin: "sm",
-      action: { type: "uri", label: "✅ แจ้งชำระเงินแล้ว", uri: oaMsgUri(`แจ้งชำระเงิน${ref}`) }
-    });
-    contents.push({
+      style: "primary",
+      color: primary,
+      action: { type: "uri", label: "💳 แจ้งชำระเงิน", uri: oaMsgUri(`แจ้งชำระเงิน${ref}`) }
+    },
+    {
       type: "button",
       style: "secondary",
       height: "sm",
       action: { type: "uri", label: "📦 สอบถามสถานะ", uri: oaMsgUri(`เช็คสถานะ${ref}`) }
-    });
-  }
-
-  return contents;
+    },
+    { type: "text", text: "กดปุ่มเพื่อแจ้งร้าน ระบบจะตอบกลับอัตโนมัติ", size: "xxs", color: "#AAAAAA", align: "center", wrap: true }
+  ];
 }
 
 async function sendOrderMessage(message, flexMessage = null) {

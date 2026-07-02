@@ -658,10 +658,14 @@
                 <td>${formatDate(order.created_at)}</td>
                 <td>
                   <div class="row-actions">
+                    <button class="mini-btn" type="button" data-detail-order="${escapeAttr(order.id)}">รายละเอียด</button>
                     <button class="mini-btn" type="button" data-notify-order="${escapeAttr(order.id)}">แจ้งลูกค้า</button>
                     <button class="mini-btn danger" type="button" data-delete-order="${escapeAttr(order.id)}">ลบ</button>
                   </div>
                 </td>
+              </tr>
+              <tr class="order-detail-row is-hidden" data-detail-for="${escapeAttr(order.id)}">
+                <td colspan="6">${orderDetailHtml(order)}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -670,6 +674,10 @@
     `;
     document.querySelectorAll("[data-order-status]").forEach((select) => select.addEventListener("change", () => updateOrderStatus(select.dataset.orderStatus, select.value)));
     document.querySelectorAll("[data-delete-order]").forEach((button) => button.addEventListener("click", () => removeOrder(button.dataset.deleteOrder)));
+    document.querySelectorAll("[data-detail-order]").forEach((button) => button.addEventListener("click", () => {
+      const row = document.querySelector(`[data-detail-for="${CSS.escape(button.dataset.detailOrder)}"]`);
+      if (row) row.classList.toggle("is-hidden");
+    }));
     document.querySelectorAll("[data-notify-order]").forEach((button) => button.addEventListener("click", () => openNotifyModal(button.dataset.notifyOrder)));
   }
 
@@ -811,6 +819,34 @@
     } catch (error) {
       return false;
     }
+  }
+
+  function orderDetailHtml(order) {
+    const items = Array.isArray(order.order_items) ? order.order_items : [];
+    const itemsHtml = items.length
+      ? `<ul class="detail-items">${items.map((item) => `<li>${escapeHtml(item.product_name || "")}${item.pack ? ` (${escapeHtml(item.pack)})` : ""} — ${escapeHtml(item.qty)} x ${money(item.price)} = <strong>${money(item.subtotal)}</strong></li>`).join("")}</ul>`
+      : `<div class="admin-muted">ไม่มีรายการสินค้า</div>`;
+    const rows = [];
+    if (order.customer_phone) rows.push(["เบอร์โทร", escapeHtml(order.customer_phone)]);
+    if (order.customer_address) rows.push(["ที่อยู่จัดส่ง", escapeHtml(order.customer_address)]);
+    if (order.pay_method) rows.push(["ชำระเงิน", escapeHtml(order.pay_method)]);
+    rows.push(["ค่าจัดส่ง", money(order.shipping_fee)]);
+    rows.push(["ยอดรวมทั้งหมด", `<strong>${money(order.total)}</strong>`]);
+    if (order.tax_required) rows.push(["ใบกำกับภาษี", escapeHtml(order.tax_info || "ต้องการใบกำกับภาษี")]);
+
+    return `
+      <div class="order-detail">
+        <div class="order-detail-block">
+          <h4>รายการสินค้า</h4>
+          ${itemsHtml}
+        </div>
+        <div class="order-detail-block">
+          <h4>ข้อมูลลูกค้า / จัดส่ง</h4>
+          <table class="detail-kv">${rows.map(([key, val]) => `<tr><th>${key}</th><td>${val}</td></tr>`).join("")}</table>
+          ${order.note ? `<div class="detail-note">${escapeHtml(order.note)}</div>` : ""}
+        </div>
+      </div>
+    `;
   }
 
   async function updateOrderStatus(orderId, status) {
