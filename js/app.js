@@ -843,7 +843,7 @@ async function submitOrder(event) {
   if (SHOP_CONFIG.useSupabase && CURRENT_SHOP?.slug && window.ShopServices?.orderService) {
     try {
       const result = await createOrderViaDataLayer(values);
-      await sendOrderMessage(result.message, buildOrderFlex(values, result));
+      await sendOrderMessage(result.message, buildOrderFlex(values, result), { saved: true, orderNo: result.order_no });
       return;
     } catch (error) {
       console.error(error);
@@ -1129,7 +1129,7 @@ function buildOrderFlexFooter(primary, orderNo, payMethod) {
   ];
 }
 
-async function sendOrderMessage(message, flexMessage = null) {
+async function sendOrderMessage(message, flexMessage = null, meta = {}) {
   if (canSendLiffMessage()) {
     const attempts = [];
     if (flexMessage) attempts.push(flexMessage);
@@ -1159,23 +1159,48 @@ async function sendOrderMessage(message, flexMessage = null) {
     showBanner(`ส่งเข้า LINE ไม่สำเร็จ: ${lastError?.code || ""} ${lastError?.message || lastError}`.trim());
   }
 
-  openFallbackMessage(message);
+  openFallbackMessage(message, meta);
 }
 
-function openFallbackMessage(message) {
+// ลิงก์เปิดแชท/เพิ่มเพื่อน LINE OA ของร้าน (จาก lineOaId)
+function shopLineUrl() {
+  const oaId = SHOP_CONFIG.lineOaId;
+  return oaId ? `https://line.me/R/ti/p/${encodeURIComponent(oaId)}` : "";
+}
+
+function openFallbackMessage(message, meta = {}) {
+  const saved = Boolean(meta.saved);
+  const lineUrl = shopLineUrl();
+
   openSheet(`
-    <h2 class="sheet-title" id="sheetTitle">สรุปออเดอร์</h2>
+    <h2 class="sheet-title" id="sheetTitle">${saved ? "บันทึกออเดอร์แล้ว ✅" : "สรุปออเดอร์"}</h2>
+    ${saved
+      ? `<div class="order-summary-box">
+           <div>ออเดอร์${meta.orderNo ? ` เลขที่ <strong>${escapeHtml(meta.orderNo)}</strong>` : ""} ถูกส่งถึงร้านเรียบร้อยแล้ว</div>
+           <div class="pack">ร้านจะติดต่อกลับตามเบอร์ที่ให้ไว้ หรือแจ้งร้านผ่าน LINE เพื่อความรวดเร็ว</div>
+         </div>`
+      : `<p class="form-note">คัดลอกข้อความนี้ส่งให้ร้านผ่าน LINE เพื่อยืนยันออเดอร์</p>`}
     <textarea class="order-summary" id="fallbackMessage" readonly>${escapeHtml(message)}</textarea>
     <div class="action-stack">
-      <button class="primary-btn" type="button" id="copyMessage">คัดลอกข้อความ</button>
-      <button class="ghost-btn" type="button" id="keepCart">กลับไปแก้ไขตะกร้า</button>
+      ${lineUrl ? `<a class="primary-btn" href="${escapeAttr(lineUrl)}" target="_blank" rel="noopener" id="openShopLine">แจ้งร้านผ่าน LINE</a>` : ""}
+      <button class="${lineUrl ? "secondary-btn" : "primary-btn"}" type="button" id="copyMessage">คัดลอกข้อความ</button>
+      <button class="ghost-btn" type="button" id="keepCart">${saved ? "กลับไปหน้าร้าน" : "กลับไปแก้ไขตะกร้า"}</button>
     </div>
   `);
+
+  if (saved) {
+    Object.keys(cart).forEach((key) => delete cart[key]);
+    updateBadge();
+  }
+
   document.querySelector("#copyMessage").addEventListener("click", async () => {
     const ok = await copyText(message);
     toast(ok ? "คัดลอกข้อความแล้ว" : "คัดลอกไม่ได้ ลองแตะข้อความค้างไว้");
   });
-  document.querySelector("#keepCart").addEventListener("click", renderCart);
+  document.querySelector("#keepCart").addEventListener("click", () => {
+    if (saved) closeSheet();
+    else renderCart();
+  });
 }
 
 async function initLiff() {
