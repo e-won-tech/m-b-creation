@@ -1375,9 +1375,7 @@ async function contactShopAboutOrder(orderNo) {
 function renderMemberStats(member) {
   return `
     <div class="stat-grid">
-      <div class="stat"><span>ระดับ</span><strong>${escapeHtml(member.tier || "ทั่วไป")}</strong></div>
-      <div class="stat"><span>คะแนน</span><strong>${escapeHtml(member.points || 0)}</strong></div>
-      <div class="stat"><span>ยอดซื้อ</span><strong>${money(Number(member.total_spent || 0))}</strong></div>
+      <div class="stat"><span>ยอดสั่งซื้อสะสม</span><strong>${money(Number(member.total_spent || 0))}</strong></div>
     </div>
   `;
 }

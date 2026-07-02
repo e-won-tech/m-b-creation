@@ -1,5 +1,5 @@
--- ยอดสั่งซื้อสะสมของสมาชิก = ผลรวมเฉพาะออเดอร์ที่ "สำเร็จ" (confirmed / packing / shipped / completed)
--- ไม่นับ pending / waiting_payment / paid(รอตรวจสอบ) / cancelled
+-- ยอดสั่งซื้อสะสมของสมาชิก = ผลรวมเฉพาะออเดอร์ที่ "เสร็จสิ้น" (completed) เท่านั้น
+-- ไม่นับสถานะอื่น (pending / waiting_payment / paid / confirmed / packing / shipped / cancelled)
 
 -- 1) create_order_from_cart: ไม่บวกยอดสะสมตอนสร้างออเดอร์อีกต่อไป (ปล่อยให้ trigger คิดจากออเดอร์สำเร็จ)
 create or replace function public.create_order_from_cart(payload jsonb)
@@ -225,7 +225,7 @@ begin
              from public.orders o
             where o.shop_id = p_shop
               and o.line_user_id = p_uid
-              and o.status in ('confirmed', 'packing', 'shipped', 'completed')
+              and o.status = 'completed'
          ), 0),
          updated_at = now()
    where m.shop_id = p_shop and m.line_user_id = p_uid;
@@ -261,5 +261,5 @@ update public.members m
            from public.orders o
           where o.shop_id = m.shop_id
             and o.line_user_id = m.line_user_id
-            and o.status in ('confirmed', 'packing', 'shipped', 'completed')
+            and o.status = 'completed'
        ), 0);
