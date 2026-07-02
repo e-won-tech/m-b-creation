@@ -345,10 +345,25 @@ function openDetail(id) {
 
 function renderDetail(product) {
   const out = product.stock !== null && product.stock <= 0;
+  const images = [product.image, product.image2].filter(Boolean);
+  let mediaInner;
+  if (images.length > 1) {
+    mediaInner = `
+      <div class="detail-slider" id="detailSlider">
+        ${images.map((src) => `<div class="detail-slide"><img src="${escapeAttr(src)}" alt="${escapeAttr(product.name)}"></div>`).join("")}
+      </div>
+      <button class="slider-nav prev" type="button" id="slidePrev" aria-label="รูปก่อนหน้า">‹</button>
+      <button class="slider-nav next" type="button" id="slideNext" aria-label="รูปถัดไป">›</button>
+      <div class="slider-dots" id="sliderDots">${images.map((_, i) => `<span class="${i === 0 ? "is-active" : ""}"></span>`).join("")}</div>`;
+  } else if (images.length === 1) {
+    mediaInner = `<img src="${escapeAttr(images[0])}" alt="${escapeAttr(product.name)}">`;
+  } else {
+    mediaInner = iconSvg(product.icon, "product-icon");
+  }
   openSheet(`
     <div class="detail-view">
       <div class="detail-media ${out ? "is-out" : ""}">
-        ${product.image ? `<img src="${escapeAttr(product.image)}" alt="${escapeAttr(product.name)}">` : iconSvg(product.icon, "product-icon")}
+        ${mediaInner}
         ${out ? `<span class="sold-out-badge">สินค้าหมด</span>` : ""}
       </div>
       <h2 class="sheet-title" id="sheetTitle">${escapeHtml(product.name)}</h2>
@@ -379,7 +394,6 @@ function renderDetail(product) {
         <button class="primary-btn" type="button" id="detailAdd" ${out ? "disabled" : ""}>เพิ่มลงตะกร้า</button>
         <button class="secondary-btn" type="button" id="askProduct">สอบถามสินค้ากับร้าน</button>
         <button class="ghost-btn" type="button" id="shareProduct">แชร์สินค้าให้เพื่อนใน LINE</button>
-        ${product.image2 ? '<button class="ghost-btn" type="button" id="viewImage2">ดูเนื้อสินค้า</button>' : ""}
       </div>
     </div>
   `);
@@ -389,7 +403,19 @@ function renderDetail(product) {
   document.querySelector("#detailAdd")?.addEventListener("click", addFromDetail);
   document.querySelector("#askProduct")?.addEventListener("click", () => askProduct(product));
   document.querySelector("#shareProduct")?.addEventListener("click", () => shareProduct(product));
-  document.querySelector("#viewImage2")?.addEventListener("click", () => openLightbox(product.image2, product.name));
+  bindDetailSlider();
+}
+
+function bindDetailSlider() {
+  const slider = document.querySelector("#detailSlider");
+  if (!slider) return;
+  const dots = Array.from(document.querySelectorAll("#sliderDots span"));
+  document.querySelector("#slidePrev")?.addEventListener("click", () => slider.scrollBy({ left: -slider.clientWidth, behavior: "smooth" }));
+  document.querySelector("#slideNext")?.addEventListener("click", () => slider.scrollBy({ left: slider.clientWidth, behavior: "smooth" }));
+  slider.addEventListener("scroll", () => {
+    const index = Math.round(slider.scrollLeft / slider.clientWidth);
+    dots.forEach((dot, i) => dot.classList.toggle("is-active", i === index));
+  });
 }
 
 function changeDetailQty(delta) {
