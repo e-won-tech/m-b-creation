@@ -72,7 +72,9 @@ async function init() {
 
 // เชิญชวนให้เปิดผ่าน LINE (เฉพาะคนที่เข้าเว็บตรง ไม่ได้เปิดผ่านแอป LINE) — เด้งครั้งแรกครั้งเดียว
 function maybeShowLineInvite() {
-  if (!SHOP_CONFIG.liffId) return;
+  // ใช้ลิงก์ OA ของร้านก่อน (เปิดได้ทุกที่ ไม่ 404) ถ้าไม่มีค่อย fallback เป็น LIFF
+  const liffUrl = shopLineUrl() || (SHOP_CONFIG.liffId ? `https://liff.line.me/${SHOP_CONFIG.liffId}` : "");
+  if (!liffUrl) return;
   if (window.liff?.isInClient?.()) return; // เปิดผ่าน LINE อยู่แล้ว ไม่ต้องเชิญ
   try {
     if (localStorage.getItem("mb_line_invite_dismissed")) return;
@@ -85,7 +87,6 @@ function maybeShowLineInvite() {
     overlay.remove();
   };
 
-  const liffUrl = `https://liff.line.me/${SHOP_CONFIG.liffId}`;
   const overlay = document.createElement("div");
   overlay.className = "invite-overlay";
   overlay.innerHTML = `
