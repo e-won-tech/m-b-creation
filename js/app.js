@@ -402,7 +402,7 @@ function renderDetail(product) {
       <div class="action-stack">
         <button class="primary-btn" type="button" id="detailAdd" ${out ? "disabled" : ""}>เพิ่มลงตะกร้า</button>
         <button class="secondary-btn" type="button" id="askProduct">สอบถามสินค้ากับร้าน</button>
-        <button class="ghost-btn" type="button" id="shareProduct">แชร์สินค้าให้เพื่อนใน LINE</button>
+        <button class="ghost-btn" type="button" id="shareProduct">แชร์สินค้า</button>
       </div>
     </div>
   `);
@@ -513,18 +513,7 @@ function renderCart() {
       <div class="field">
         <span>วิธีการจัดส่ง</span>
         <div class="radio-group" id="shippingGroup">
-          <label class="radio-card">
-            <input type="radio" name="shipping" value="จัดส่งขนส่ง Flash Express" checked>
-            <span>จัดส่งขนส่ง Flash Express</span>
-          </label>
-          <label class="radio-card">
-            <input type="radio" name="shipping" value="จัดส่งขนส่งเอกชน (จำนวน 15 กระสอบขึ้นไป)">
-            <span>จัดส่งขนส่งเอกชน <small>(จำนวน 15 กระสอบขึ้นไป)</small></span>
-          </label>
-          <label class="radio-card">
-            <input type="radio" name="shipping" value="รับสินค้าด้วยตัวเอง">
-            <span>รับสินค้าด้วยตัวเอง</span>
-          </label>
+          ${shippingOptionsHtml(items)}
         </div>
       </div>
       <div class="field">
@@ -568,6 +557,28 @@ function renderCart() {
   });
   onShippingChange(document.querySelector('input[name="shipping"]:checked')?.value);
   document.querySelector("#orderForm").addEventListener("submit", submitOrder);
+}
+
+// ตัวเลือกวิธีจัดส่ง — ถ้ายอด/จำนวนไม่ถึงเงื่อนไข ให้ disabled (เทากดไม่ได้) พร้อมเหตุผล
+function shippingOptionsHtml(items) {
+  const options = [
+    { value: "จัดส่งขนส่ง Flash Express", label: "จัดส่งขนส่ง Flash Express" },
+    { value: "จัดส่งขนส่งเอกชน (จำนวน 15 กระสอบขึ้นไป)", label: 'จัดส่งขนส่งเอกชน <small>(จำนวน 15 กระสอบขึ้นไป)</small>' },
+    { value: "รับสินค้าด้วยตัวเอง", label: "รับสินค้าด้วยตัวเอง" }
+  ];
+  let firstEnabledPicked = false;
+  return options.map((opt) => {
+    const check = computeShipping(opt.value, items);
+    const disabled = Boolean(check.error);
+    const checked = !disabled && !firstEnabledPicked;
+    if (checked) firstEnabledPicked = true;
+    return `
+      <label class="radio-card ${disabled ? "is-disabled" : ""}">
+        <input type="radio" name="shipping" value="${escapeAttr(opt.value)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}>
+        <span>${opt.label}${disabled ? `<small class="radio-reason">${escapeHtml(check.error)}</small>` : ""}</span>
+      </label>
+    `;
+  }).join("");
 }
 
 function onShippingChange(shipping) {
@@ -1212,18 +1223,26 @@ async function askProduct(product) {
 }
 
 async function shareProduct(product) {
-  if (!window.liff?.shareTargetPicker) return toast("แชร์ได้เมื่อเปิดในแอป LINE");
   const link = new URL(window.location.href);
   link.search = new URLSearchParams({ pname: product.name }).toString();
-  const contents = product.image
-    ? buildProductFlex(product, link.toString())
-    : { type: "text", text: `${product.name}\n${product.pack}\n${money(product.price)}\n${link}` };
+  const url = link.toString();
+  const shareData = {
+    title: product.name,
+    text: `${product.name} • ${product.pack || ""} • ${money(product.price)}`,
+    url
+  };
 
-  try {
-    await liff.shareTargetPicker([contents]);
-  } catch (error) {
-    toast("แชร์สินค้าไม่สำเร็จ");
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
   }
+
+  const ok = await copyText(url);
+  toast(ok ? "คัดลอกลิงก์สินค้าแล้ว" : "คัดลอกลิงก์ไม่สำเร็จ ลองแตะลิงก์ค้างไว้");
 }
 
 function buildProductFlex(product, uri) {

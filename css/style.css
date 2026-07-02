@@ -952,6 +952,27 @@ body.sheet-open {
   background: var(--soft);
 }
 
+.radio-card.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: var(--soft);
+  border-color: var(--line);
+}
+
+.radio-card.is-disabled:hover {
+  border-color: var(--line);
+}
+
+.radio-card.is-disabled span,
+.radio-card.is-disabled span small {
+  color: var(--muted);
+}
+
+.radio-card .radio-reason {
+  color: #c0392b;
+  font-weight: 500;
+}
+
 .detail-stack {
   display: grid;
   gap: 10px;
